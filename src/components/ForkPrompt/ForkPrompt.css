@@ -1,0 +1,65 @@
+.fork-prompt {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px;
+    background: #1a3d2a;
+}
+
+.fork-prompt__player {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.fork-prompt__question {
+    font-size: 1rem;
+    color: #ccc;
+    text-align: center;
+    max-width: 320px;
+}
+
+.fork-prompt__cards {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.fork-prompt__context {
+    font-size: 0.8rem;
+    color: #888;
+    text-align: center;
+}
+
+.fork-prompt__buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.fork-prompt__btn {
+    padding: 12px 36px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.fork-prompt__btn:hover {
+    opacity: 0.85;
+}
+
+.fork-prompt__btn--yes {
+    background: #b8860b;
+    color: #fff;
+}
+
+.fork-prompt__btn--no {
+    background: #555;
+    color: #fff;
+}

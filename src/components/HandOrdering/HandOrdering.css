@@ -1,0 +1,98 @@
+.hand-ordering {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 24px;
+}
+
+.hand-ordering__player {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.hand-ordering__title {
+    font-size: 1rem;
+    color: #aaa;
+    margin-top: -16px;
+}
+
+.hand-ordering__section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.hand-ordering__row-label {
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.hand-ordering__row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    min-height: 90px;
+    align-items: center;
+    padding: 4px;
+}
+
+.hand-ordering__row--dealt {
+    min-height: 100px;
+    padding: 10px 4px 0;
+}
+
+.hand-ordering__slot {
+    width: 60px;
+    height: 90px;
+    border-radius: 6px;
+    border: 2px dashed #444;
+    background: rgba(255, 255, 255, 0.04);
+    flex-shrink: 0;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.hand-ordering__slot--ready {
+    border-color: #f0c040;
+    background: rgba(240, 192, 64, 0.08);
+    cursor: pointer;
+}
+
+.hand-ordering__slot--ready:hover {
+    background: rgba(240, 192, 64, 0.18);
+}
+
+.hand-ordering__all-placed {
+    color: #6abf6a;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.hand-ordering__btn {
+    padding: 12px 40px;
+    font-size: 1rem;
+    font-weight: 600;
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.hand-ordering__btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.hand-ordering__btn:not(:disabled):hover {
+    background: #388e3c;
+}

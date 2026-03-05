@@ -1,0 +1,95 @@
+.card {
+    position: relative;
+    width: 60px;
+    height: 90px;
+    border-radius: 6px;
+    border: 1px solid #bbb;
+    background: #fff;
+    color: #111;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.card:hover {
+    box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.card--selected {
+    border: 2px solid #f0c040;
+    box-shadow: 0 0 8px rgba(240, 192, 64, 0.9);
+    transform: translateY(-10px);
+}
+
+.card--red {
+    color: #cc0000;
+}
+
+.card--face-down {
+    cursor: default;
+    background: #fff;
+}
+
+.card--face-down:hover {
+    box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.card__back {
+    width: 100%;
+    height: 100%;
+    border-radius: 5px;
+    background: repeating-linear-gradient(
+        45deg,
+        #1a4a8a,
+        #1a4a8a 4px,
+        #2255aa 4px,
+        #2255aa 8px
+    );
+}
+
+.card__corner {
+    font-size: 0.7rem;
+    font-weight: bold;
+    line-height: 1.1;
+    padding: 3px 4px;
+    text-align: center;
+}
+
+.card__corner--bottom {
+    transform: rotate(180deg);
+}
+
+.card__center {
+    text-align: center;
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.card--joker {
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: #333;
+}
+
+.card--joker-small {
+    filter: grayscale(1);
+}
+
+.card__joker-label {
+    font-size: 0.55rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.card__joker-symbol {
+    font-size: 1.4rem;
+    color: gold;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}

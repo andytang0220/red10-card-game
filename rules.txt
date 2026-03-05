@@ -1,0 +1,79 @@
+Red 10 Card Game Rules:
+
+Players: 5
+Setup: 
+Deck (including 2 Jokers) is dealt out to each player evenly (for 5 people, one person randomly is dealt one fewer card than the others).
+Points: each player starts with 0 points
+
+Card Values:
+4 < 5 < ... < 10 < Jack < Queen < King < Ace < 2 < 3 < small Joker < big Joker (1 small and 1 big Joker in a deck)
+
+Tricks:
+single cards
+2 of a kind
+straight (at least 3 cards, can wrap around from 3 -> 4 and Jokers are not included)
+    - straight flush (larger than a straight of the same value cards)
+tractor (straight of 2 of a kinds i.e. [6,6], [7,7]; minimum 2 pairs in length)
+bombs (at least 3 of a kind, follows card values)
+atomic bombs (4 of a kind, follows card values; atomic bombs are larger than normal bombs)
+special bombs:
+    - two red 10s (10 of hearts, 10 of diamonds; is the largest bomb in the game)
+    - two Jokers (second largest bomb in the game)
+
+Game Overview:
+The game is played in rounds, each round is composed of tricks.
+Each round there are two teams: players with a red 10 in their hand and players without a red 10 in their hand.
+Players do not know who is on whose team until a player with a red 10 reveals so by playing their red 10.
+    Thus, each round is either a 2 vs 3 or a 1 vs 4 depending on how the red 10s are distributed among the players.
+Each round begins by dealing cards out face down.
+Players look at and organize their hand.
+The goal is to get rid of all cards in your hand.
+This is done by playing tricks (see above).
+The player with the 4 of hearts in their hand plays the first trick of the round.
+For each trick, whichever player plays the first type of trick (see above) all subsequent players must play the same 
+trick.
+    For example, if a player starts by playing a single 4, each next player has to play a single card that is greater in value than
+    the card played before them, follwing the card values above. Same goes for 2 of a kind tricks.
+    For tractor and straight tricks, the length of these tricks must match. For example, if a player starts with a 3 card straight, 
+    the next player must play a higher value 3 card straight. Tractor and straight values are determined by ending card value. 
+    Tractor and straight tricks can also "wrap around" meaning that even though 3 is the highest non-Joker card, 3,4,5 is still a valid 
+    straight (as is [3,3], [4,4], [5,5]). However, note that because straight and tractor trick value is determined by ending card value, 
+    a 3,4,5 straight is smaller than a 4,5,6 straight even though 3 is technically the highest single non-Joker card. But because it is 
+    included in a wrap around straight that ends in a 5, its value as a single card is not applicable and instead the 5 dictates the value 
+    of the straight. Same goes for tractors.
+    A special rule regarding straights: a straight flush is larger than its non flush counterpart.
+        Example: 3clubs,4diamonds,5spades is smaller than 3hearts,4hearts,5hearts.
+        Suits themselves are considered equal in value so no straight flush is larger than another same card rank value straight flush in a different suit.
+Any bomb can be played during any trick, regardless if a bomb is played beforehand or not.
+Generally, tricks are played in clockwise order with the following exceptions:
+    Forks and Drawbacks
+    Fork:
+        Only applies during a single card trick. A player who as a pair of the single value card played can play that pair on top of the 
+        single card, so long as they play it before the next player in rotation plays their card.
+            Example: player 1 plays a 4, player 2 is next and is thinking about playing a single 7, player 4 can out of turn play his pair of 
+            4s on top of the recently played single 4 as a fork before player 2 has made his move. If player 2 plays his single 7 first, however, player 4 
+            is blocked from forking the single 4 with his pair of 4s.
+        After a fork, play continues from the player who played the fork with the new starting trick being the pair they played.
+            Example: player 3 forks a single 4 with a pair of 4s, player 5 now resumes play having to play a pair greater than or equal to a pair of 4s 
+            (or he can play a bomb).
+    Drawbacks:
+        Drawbacks can only be played following a fork. A Drawback is when a player, following the same out of turn play rules as a fork, plays the final 
+        single card of the forked value (since there are only 4 of any rank in a deck, if a player has played a fork, there are 3 cards of that value out in 
+        play so the last card of that value can be played on top as a drawback). Similar to a fork, if a player wants to play a drawback, they must do so before 
+        the next player in turn plays their trick, otherwise they are blocked from playing the drawback.
+        Drawbacks are different from forks in what happens after they are played. When a drawback is successfully played, the trick ends and the player who played 
+        the drawback begins the next trick.
+When it is a player's turn to play a trick, they can either play a higher value trick than was previously played (or fork/drawback if applicable), or they can pass.
+If a player passes, they are not allowed to play anymore tricks until the current trick is over.
+A trick is over when all other players have passed and the player who played the most recent trick "wins" the trick and is allowed to start the next trick.
+As stated before, each player's goal is to play all cards in their hand.
+A round is over when 4 of the 5 players have played their cards (the last player is automatically the loser of that round).
+Points are distributed based on the team's (red 10s and non red 10s being the 2 teams) finish in the round.
+    Each member in a team gets one point if no team member won the round and one team member is the loser of the round.
+        Example: one red 10 finishes 1st, one non red 10 finishes 2nd, one non red 10 finishes 3rd, one red 10 finishes fourth, one non red 10 finishes 5th. non red 10 players each get one point.
+    Each member in a team gets two points if all members of the team occupy the bottom x places with x being the number of team members
+        Example: one red 10 finishes 1st, one red 10 finishes 2nd, the three non red 10 players finish 3rd, 4th, 5th. each non red 10 member gets 2 points.
+    Each member in a team gets 0 points if either:
+        no team member finishes first and no team member finishes last
+        one team member finishes first and one team member finishes largest
+Rounds are played until any player reaches or passes 10 points.

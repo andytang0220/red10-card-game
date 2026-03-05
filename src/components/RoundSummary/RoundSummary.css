@@ -1,0 +1,154 @@
+.round-summary {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px;
+}
+
+.round-summary__title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.round-summary__order {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.round-summary__entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 1rem;
+}
+
+.round-summary__entry--red {
+    background: rgba(180, 30, 30, 0.18);
+}
+
+.round-summary__entry--loser {
+    background: rgba(180, 30, 30, 0.45);
+}
+
+.round-summary__team-badge {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.round-summary__team-badge--red {
+    color: #e05555;
+}
+
+.round-summary__team-badge--black {
+    color: #aaa;
+}
+
+.round-summary__rank {
+    color: #888;
+    min-width: 22px;
+    font-size: 0.85rem;
+}
+
+.round-summary__name {
+    flex: 1;
+    font-weight: 600;
+}
+
+.round-summary__pts {
+    font-size: 0.85rem;
+    color: #e07070;
+    font-weight: 600;
+}
+
+.round-summary__teams {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.round-summary__team-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.round-summary__team-block--red {
+    background: rgba(180, 30, 30, 0.2);
+}
+
+.round-summary__team-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.round-summary__team-block--red .round-summary__team-icon {
+    color: #e05555;
+}
+
+.round-summary__team-block--black .round-summary__team-icon {
+    color: #aaa;
+}
+
+.round-summary__team-members {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.round-summary__team-pts {
+    font-size: 0.8rem;
+    color: #e07070;
+    font-weight: 600;
+}
+
+.round-summary__team-block--black .round-summary__team-pts {
+    color: #aaa;
+}
+
+.round-summary__scores {
+    display: flex;
+    gap: 14px;
+    color: #bbb;
+    font-size: 0.9rem;
+}
+
+.round-summary__score-entry {
+    font-weight: 600;
+}
+
+.round-summary__btn {
+    padding: 12px 40px;
+    font-size: 1rem;
+    font-weight: 600;
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.round-summary__btn:hover {
+    background: #388e3c;
+}

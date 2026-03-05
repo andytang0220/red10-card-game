@@ -1,0 +1,46 @@
+.trick-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 16px;
+    min-height: 160px;
+    justify-content: center;
+    width: 100%;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trick-area__label {
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.trick-area__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.trick-area__cards {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.trick-area__meta {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.trick-area__empty {
+    color: #666;
+    font-style: italic;
+    font-size: 0.85rem;
+    text-align: center;
+    max-width: 260px;
+}

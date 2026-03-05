@@ -1,0 +1,47 @@
+.pass-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: #111;
+}
+
+.pass-screen__prompt {
+    font-size: 1rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.pass-screen__player {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.pass-screen__subtitle {
+    font-size: 0.85rem;
+    color: #666;
+    text-align: center;
+    max-width: 240px;
+}
+
+.pass-screen__btn {
+    margin-top: 20px;
+    padding: 12px 40px;
+    font-size: 1rem;
+    font-weight: 600;
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.pass-screen__btn:hover {
+    background: #388e3c;
+}
