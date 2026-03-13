@@ -175,6 +175,21 @@ export function applyTeamSweep(gameState) {
     return null;
 }
 
+// Advances activePlayerIndex past players who are ineligible to act:
+// those with empty hands (already finished) or who already passed this trick.
+export function skipIneligiblePlayers(state) {
+    let idx = state.activePlayerIndex;
+    let count = 0;
+    while (count < PLAYER_COUNT) {
+        const emptyHand = state.hands[idx].length === 0;
+        const alreadyPassed = state.passesThisRound.includes(idx);
+        if (!emptyHand && !alreadyPassed) break;
+        idx = (idx + 1) % PLAYER_COUNT;
+        count++;
+    }
+    return { ...state, activePlayerIndex: idx };
+}
+
 // Returns true when 4 or more players have emptied their hands.
 export function isRoundOver(gameState) {
     return gameState.finishOrder.length >= 4;

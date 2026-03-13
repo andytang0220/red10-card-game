@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './App.css';
-import { dealCards, findRedTenHolders, getNextPlayerIndex, playCard, passTurn, resolveTrick, isRoundOver, getRoundResult, applyTeamSweep } from './logic/round.js';
-import { canFork, canDrawback, applyFork, applyDrawback } from './logic/forks.js';
+import { dealCards, findRedTenHolders, getNextPlayerIndex, playCard, passTurn, resolveTrick, isRoundOver, getRoundResult, applyTeamSweep, skipIneligiblePlayers } from './logic/round.js';
+import { canFork, canDrawback, applyFork, applyDrawback, findForkCandidate, findDrawbackCandidate } from './logic/forks.js';
 import { calculateRoundPoints, applyRoundScore, isGameOver } from './logic/scoring.js';
 import { TRICK_TYPES } from './logic/tricks.js';
 import PassScreen from './components/PassScreen/PassScreen.jsx';
@@ -29,47 +29,6 @@ const initialState = {
     forkWindow: null,
     roundNumber: 1,
 };
-
-// Returns the first player in rotation from startFrom (inclusive) up to but
-// not including stopBefore who can fork the current single trick, or null.
-function findForkCandidate(hands, currentTrick, startFrom, stopBefore) {
-    let idx = startFrom;
-    while (idx !== stopBefore) {
-        if (hands[idx].length > 0 && canFork(hands[idx], currentTrick) !== null) {
-            return idx;
-        }
-        idx = (idx + 1) % PLAYER_COUNT;
-    }
-    return null;
-}
-
-// Returns the first player in rotation from startFrom (inclusive) up to but
-// not including stopBefore who holds the last card of forkValue, or null.
-function findDrawbackCandidate(hands, forkValue, startFrom, stopBefore) {
-    let idx = startFrom;
-    while (idx !== stopBefore) {
-        if (hands[idx].length > 0 && canDrawback(hands[idx], forkValue) !== null) {
-            return idx;
-        }
-        idx = (idx + 1) % PLAYER_COUNT;
-    }
-    return null;
-}
-
-// Advances activePlayerIndex past players who are ineligible to act:
-// those with empty hands (already finished) or who already passed this trick.
-function skipIneligiblePlayers(state) {
-    let idx = state.activePlayerIndex;
-    let count = 0;
-    while (count < PLAYER_COUNT) {
-        const emptyHand = state.hands[idx].length === 0;
-        const alreadyPassed = state.passesThisRound.includes(idx);
-        if (!emptyHand && !alreadyPassed) break;
-        idx = (idx + 1) % PLAYER_COUNT;
-        count++;
-    }
-    return { ...state, activePlayerIndex: idx };
-}
 
 function App() {
     const [gameState, setGameState] = useState(initialState);
