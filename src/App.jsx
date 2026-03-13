@@ -36,7 +36,7 @@ function App() {
                 orderingReady={orderingReady}
                 orderingPlayerIndex={orderingPlayerIndex}
                 hand={hands[orderingPlayerIndex]}
-                onReady={() => engine.setOrderingReady(true)}
+                onReady={engine.setOrderingReady}
                 onDone={engine.handleOrderingDone}
             />
         );
@@ -46,7 +46,7 @@ function App() {
         return (
             <PassScreen
                 playerIndex={activePlayerIndex}
-                onReady={() => engine.setGameState(s => ({ ...s, phase: 'playing' }))}
+                onReady={engine.enterPlaying}
             />
         );
     }
@@ -58,7 +58,7 @@ function App() {
                 forkWindow={forkWindow}
                 hands={hands}
                 currentTrick={currentTrick}
-                onReady={() => engine.setForkReady(true)}
+                onReady={engine.setForkReady}
                 onAccept={engine.handleForkAccept}
                 onDecline={engine.handleForkDecline}
             />
