@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dealCards, findRedTenHolders, getNextPlayerIndex, playCard, passTurn, resolveTrick, isRoundOver, getRoundResult, applyTeamSweep } from './round.js';
+import { dealCards, findRedTenHolders, getNextPlayerIndex, playCard, passTurn, resolveTrick, isRoundOver, getRoundResult, applyTeamSweep, skipIneligiblePlayers } from './round.js';
 import { TRICK_TYPES } from './tricks.js';
 
 // --- Helpers ---
@@ -387,5 +387,54 @@ describe('applyTeamSweep', () => {
         });
         const swept = applyTeamSweep(state);
         expect(isRoundOver(swept)).toBe(true);
+    });
+});
+
+// --- skipIneligiblePlayers ---
+
+describe('skipIneligiblePlayers', () => {
+    it('returns the same index if the active player is eligible', () => {
+        const state = makeState({
+            activePlayerIndex: 2,
+            hands: [[c('7','♥')], [c('8','♦')], [c('9','♣')], [c('10','♠')], [c('J','♥')]],
+            passesThisRound: [],
+        });
+        expect(skipIneligiblePlayers(state).activePlayerIndex).toBe(2);
+    });
+
+    it('skips players with empty hands', () => {
+        const state = makeState({
+            activePlayerIndex: 0,
+            hands: [[], [], [c('9','♣')], [c('10','♠')], [c('J','♥')]],
+            passesThisRound: [],
+        });
+        expect(skipIneligiblePlayers(state).activePlayerIndex).toBe(2);
+    });
+
+    it('skips players who already passed', () => {
+        const state = makeState({
+            activePlayerIndex: 1,
+            hands: [[c('7','♥')], [c('8','♦')], [c('9','♣')], [c('10','♠')], [c('J','♥')]],
+            passesThisRound: [1, 2],
+        });
+        expect(skipIneligiblePlayers(state).activePlayerIndex).toBe(3);
+    });
+
+    it('wraps around to find eligible player', () => {
+        const state = makeState({
+            activePlayerIndex: 3,
+            hands: [[c('7','♥')], [], [], [], []],
+            passesThisRound: [3, 4],
+        });
+        expect(skipIneligiblePlayers(state).activePlayerIndex).toBe(0);
+    });
+
+    it('skips both empty-handed and passed players', () => {
+        const state = makeState({
+            activePlayerIndex: 0,
+            hands: [[], [c('8','♦')], [c('9','♣')], [], [c('J','♥')]],
+            passesThisRound: [1],
+        });
+        expect(skipIneligiblePlayers(state).activePlayerIndex).toBe(2);
     });
 });
