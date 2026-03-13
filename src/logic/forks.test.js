@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canFork, canDrawback, applyFork, applyDrawback } from './forks.js';
+import { canFork, canDrawback, applyFork, applyDrawback, findForkCandidate, findDrawbackCandidate } from './forks.js';
 import { TRICK_TYPES } from './tricks.js';
 import { SMALL_JOKER_VALUE, BIG_JOKER_VALUE } from './cards.js';
 
@@ -262,5 +262,110 @@ describe('applyDrawback', () => {
         });
         const result = applyDrawback(state, 2, c('7','♦'));
         expect(result.revealedRedTens).toEqual([]);
+    });
+});
+
+// --- findForkCandidate ---
+
+describe('findForkCandidate', () => {
+    it('returns the first player who can fork', () => {
+        const trick = single(c('7','♣'));
+        const hands = [
+            [],                                      // player 0: empty
+            [c('7','♥'), c('7','♠'), c('9','♦')],   // player 1: can fork
+            [c('8','♥')],                            // player 2: no match
+            [], [],
+        ];
+        expect(findForkCandidate(hands, trick, 0, 4)).toBe(1);
+    });
+
+    it('returns null when no player can fork', () => {
+        const trick = single(c('7','♣'));
+        const hands = [
+            [c('8','♥')],
+            [c('9','♠')],
+            [c('10','♦')],
+            [c('J','♣')],
+            [c('Q','♥')],
+        ];
+        expect(findForkCandidate(hands, trick, 0, 0)).toBeNull();
+    });
+
+    it('wraps around player indices', () => {
+        const trick = single(c('7','♣'));
+        const hands = [
+            [c('7','♥'), c('7','♠')],   // player 0: can fork
+            [c('8','♥')],
+            [], [], [],
+        ];
+        // Start from player 3, stop before player 2 — should wrap and find player 0
+        expect(findForkCandidate(hands, trick, 3, 2)).toBe(0);
+    });
+
+    it('skips players with empty hands', () => {
+        const trick = single(c('7','♣'));
+        const hands = [
+            [],                                      // empty
+            [],                                      // empty
+            [c('7','♥'), c('7','♠')],                // can fork
+            [], [],
+        ];
+        expect(findForkCandidate(hands, trick, 0, 4)).toBe(2);
+    });
+
+    it('returns null when startFrom equals stopBefore', () => {
+        const trick = single(c('7','♣'));
+        const hands = [[c('7','♥'), c('7','♠')], [], [], [], []];
+        // Searching from 0 to 0 means no players to check
+        expect(findForkCandidate(hands, trick, 0, 0)).toBeNull();
+    });
+});
+
+// --- findDrawbackCandidate ---
+
+describe('findDrawbackCandidate', () => {
+    it('returns the first player holding the forked value', () => {
+        const hands = [
+            [],
+            [c('8','♥')],
+            [c('7','♦'), c('9','♠')],   // player 2: has the 7
+            [], [],
+        ];
+        expect(findDrawbackCandidate(hands, 7, 0, 4)).toBe(2);
+    });
+
+    it('returns null when no player holds the forked value', () => {
+        const hands = [
+            [c('8','♥')],
+            [c('9','♠')],
+            [c('10','♦')],
+            [c('J','♣')],
+            [c('Q','♥')],
+        ];
+        expect(findDrawbackCandidate(hands, 7, 0, 0)).toBeNull();
+    });
+
+    it('wraps around player indices', () => {
+        const hands = [
+            [c('7','♣')],   // player 0: has the 7
+            [c('8','♥')],
+            [], [], [],
+        ];
+        expect(findDrawbackCandidate(hands, 7, 3, 2)).toBe(0);
+    });
+
+    it('skips players with empty hands', () => {
+        const hands = [
+            [],
+            [],
+            [c('7','♦')],
+            [], [],
+        ];
+        expect(findDrawbackCandidate(hands, 7, 0, 4)).toBe(2);
+    });
+
+    it('returns null when startFrom equals stopBefore', () => {
+        const hands = [[c('7','♥')], [], [], [], []];
+        expect(findDrawbackCandidate(hands, 7, 0, 0)).toBeNull();
     });
 });
