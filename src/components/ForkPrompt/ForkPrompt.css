@@ -22,12 +22,6 @@
     max-width: 320px;
 }
 
-.fork-prompt__cards {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-}
-
 .fork-prompt__context {
     font-size: 0.8rem;
     color: #888;
@@ -37,7 +31,6 @@
 .fork-prompt__buttons {
     display: flex;
     gap: 12px;
-    margin-top: 8px;
 }
 
 .fork-prompt__btn {
@@ -62,4 +55,30 @@
 .fork-prompt__btn--no {
     background: #555;
     color: #fff;
+}
+
+.fork-prompt__hand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.fork-prompt__hand-label {
+    font-size: 0.75rem;
+    color: #aaa;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.fork-prompt__hand-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    min-height: 100px;
+    align-items: flex-end;
+    padding-top: 10px;
 }

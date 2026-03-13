@@ -22,6 +22,7 @@ export default function ForkWindowPhase({ forkReady, forkWindow, hands, currentT
             stage={stage}
             forkCards={forkCards}
             drawbackCard={drawbackCard}
+            hand={hands[pendingPlayerIndex]}
             currentTrick={currentTrick}
             onAccept={onAccept}
             onDecline={onDecline}
