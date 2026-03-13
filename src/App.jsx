@@ -1,5 +1,4 @@
 import './App.css';
-import { canFork, canDrawback } from './logic/forks.js';
 import { isGameOver } from './logic/scoring.js';
 import { useGameEngine } from './hooks/useGameEngine.js';
 import PassScreen from './components/PassScreen/PassScreen.jsx';
@@ -8,8 +7,8 @@ import TrickArea from './components/TrickArea/TrickArea.jsx';
 import ActionBar from './components/ActionBar/ActionBar.jsx';
 import ScoreBoard from './components/ScoreBoard/ScoreBoard.jsx';
 import RoundSummary from './components/RoundSummary/RoundSummary.jsx';
-import ForkPrompt from './components/ForkPrompt/ForkPrompt.jsx';
-import HandOrdering from './components/HandOrdering/HandOrdering.jsx';
+import HandOrderingPhase from './components/HandOrderingPhase/HandOrderingPhase.jsx';
+import ForkWindowPhase from './components/ForkWindowPhase/ForkWindowPhase.jsx';
 
 function App() {
     const engine = useGameEngine();
@@ -32,19 +31,12 @@ function App() {
     }
 
     if (phase === 'hand_ordering') {
-        if (!orderingReady) {
-            return (
-                <PassScreen
-                    playerIndex={orderingPlayerIndex}
-                    subtitle="to arrange your hand"
-                    onReady={() => engine.setOrderingReady(true)}
-                />
-            );
-        }
         return (
-            <HandOrdering
+            <HandOrderingPhase
+                orderingReady={orderingReady}
+                orderingPlayerIndex={orderingPlayerIndex}
                 hand={hands[orderingPlayerIndex]}
-                playerIndex={orderingPlayerIndex}
+                onReady={() => engine.setOrderingReady(true)}
                 onDone={engine.handleOrderingDone}
             />
         );
@@ -60,24 +52,13 @@ function App() {
     }
 
     if (phase === 'fork_window') {
-        if (!forkReady) {
-            return (
-                <PassScreen
-                    playerIndex={forkWindow.pendingPlayerIndex}
-                    onReady={() => engine.setForkReady(true)}
-                />
-            );
-        }
-        const { stage, value, pendingPlayerIndex } = forkWindow;
-        const forkCards = stage === 'fork' ? canFork(hands[pendingPlayerIndex], currentTrick) : null;
-        const drawbackCard = stage === 'drawback' ? canDrawback(hands[pendingPlayerIndex], value) : null;
         return (
-            <ForkPrompt
-                playerIndex={pendingPlayerIndex}
-                stage={stage}
-                forkCards={forkCards}
-                drawbackCard={drawbackCard}
+            <ForkWindowPhase
+                forkReady={forkReady}
+                forkWindow={forkWindow}
+                hands={hands}
                 currentTrick={currentTrick}
+                onReady={() => engine.setForkReady(true)}
                 onAccept={engine.handleForkAccept}
                 onDecline={engine.handleForkDecline}
             />
