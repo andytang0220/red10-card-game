@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { dealCards, findRedTenHolders, playCard, passTurn, resolveTrick, isRoundOver, getRoundResult, applyTeamSweep, skipIneligiblePlayers } from '../logic/round.js';
 import { canFork, canDrawback, applyFork, applyDrawback, findForkCandidate, findDrawbackCandidate } from '../logic/forks.js';
 import { calculateRoundPoints, applyRoundScore, isGameOver } from '../logic/scoring.js';
@@ -7,6 +7,7 @@ import { TRICK_TYPES } from '../logic/tricks.js';
 const PLAYER_COUNT = 5;
 
 export const initialState = {
+    // Game state
     phase: 'setup',
     hands: [[], [], [], [], []],
     activePlayerIndex: 0,
@@ -19,267 +20,277 @@ export const initialState = {
     finishOrder: [],
     forkWindow: null,
     roundNumber: 1,
+    // UI state
+    selectedCards: [],
+    validationMessage: null,
+    forkReady: false,
+    orderingPlayerIndex: 0,
+    orderingReady: false,
+    roundPoints: { red: 0, black: 0 },
 };
 
-export function useGameEngine() {
-    const [gameState, setGameState] = useState(initialState);
-    const [selectedCards, setSelectedCards] = useState([]);
-    const [validationMessage, setValidationMessage] = useState(null);
-    const [forkReady, setForkReady] = useState(false);
-    const [orderingPlayerIndex, setOrderingPlayerIndex] = useState(0);
-    const [orderingReady, setOrderingReady] = useState(false);
-    const [roundPoints, setRoundPoints] = useState({ red: 0, black: 0 });
+// Resolves post-play transitions: sweep check, auto-resolve, fork window, or pass_screen.
+// Returns the new state. Pure function — no side effects.
+function resolveAfterPlay(state) {
+    const swept = applyTeamSweep(state);
+    const state0 = swept ?? state;
 
-    const {
-        phase, activePlayerIndex, currentTrick,
-        hands, scores, revealedRedTens, teams, finishOrder, forkWindow,
-    } = gameState;
-
-    // --- Transition helpers ---
-
-    function startRound(existingScores, roundNumber) {
-        const { hands: newHands, starterIndex } = dealCards();
-        const redTeam = findRedTenHolders(newHands);
-        const blackTeam = Array.from({ length: PLAYER_COUNT }, (_, i) => i)
-            .filter(i => !redTeam.includes(i));
-        setSelectedCards([]);
-        setValidationMessage(null);
-        setForkReady(false);
-        setOrderingPlayerIndex(0);
-        setOrderingReady(false);
-        setGameState({
-            ...initialState,
-            phase: 'hand_ordering',
-            hands: newHands,
-            activePlayerIndex: starterIndex,
-            trickStarter: starterIndex,
-            teams: { red: redTeam, black: blackTeam },
-            scores: existingScores,
-            roundNumber,
-        });
+    if (isRoundOver(state0)) {
+        return finalizeRound(state0);
     }
 
-    function afterSuccessfulPlay(newState) {
-        setSelectedCards([]);
-        setValidationMessage(null);
-
-        const swept = applyTeamSweep(newState);
-        const state0 = swept ?? newState;
-
-        if (isRoundOver(state0)) {
-            const { finishOrder: fo, loser } = getRoundResult(state0);
-            const pts = calculateRoundPoints(fo, loser, state0.teams);
-            const newScores = applyRoundScore(state0.scores, pts, state0.teams);
-            const { over } = isGameOver(newScores);
-            setRoundPoints(pts);
-            setGameState({ ...state0, scores: newScores, phase: over ? 'game_over' : 'round_over' });
-            return;
+    // Auto-resolve if all non-leader active players already passed
+    let s = state0;
+    if (s.currentTrick) {
+        const trickLeader = s.currentTrick.playedBy;
+        const nonLeaderActive = s.hands
+            .map((_, i) => i)
+            .filter(i => s.hands[i].length > 0 && i !== trickLeader);
+        if (nonLeaderActive.length > 0 && nonLeaderActive.every(i => s.passesThisRound.includes(i))) {
+            s = resolveTrick(s);
         }
-
-        let state = state0;
-        if (state.currentTrick) {
-            const trickLeader = state.currentTrick.playedBy;
-            const nonLeaderActive = state.hands
-                .map((_, i) => i)
-                .filter(i => state.hands[i].length > 0 && i !== trickLeader);
-            if (nonLeaderActive.length > 0 && nonLeaderActive.every(i => state.passesThisRound.includes(i))) {
-                state = resolveTrick(state);
-            }
-        }
-
-        if (state.currentTrick?.type === TRICK_TYPES.SINGLE) {
-            const playedBy = state.currentTrick.playedBy;
-            const candidate = findForkCandidate(
-                state.hands,
-                state.currentTrick,
-                state.activePlayerIndex,
-                playedBy,
-            );
-            if (candidate !== null) {
-                setForkReady(false);
-                setGameState({
-                    ...state,
-                    phase: 'fork_window',
-                    forkWindow: { value: state.currentTrick.value, pendingPlayerIndex: candidate, stage: 'fork' },
-                });
-                return;
-            }
-        }
-
-        setGameState(skipIneligiblePlayers({ ...state, phase: 'pass_screen' }));
     }
 
-    // --- Fork / drawback handlers ---
+    // Open a fork window if a SINGLE was just played and someone can fork it
+    if (s.currentTrick?.type === TRICK_TYPES.SINGLE) {
+        const playedBy = s.currentTrick.playedBy;
+        const candidate = findForkCandidate(s.hands, s.currentTrick, s.activePlayerIndex, playedBy);
+        if (candidate !== null) {
+            return {
+                ...s,
+                phase: 'fork_window',
+                forkWindow: { value: s.currentTrick.value, pendingPlayerIndex: candidate, stage: 'fork' },
+                forkReady: false,
+                selectedCards: [],
+                validationMessage: null,
+            };
+        }
+    }
 
-    function handleForkAccept() {
-        const { stage, value, pendingPlayerIndex } = forkWindow;
+    return skipIneligiblePlayers({
+        ...s,
+        phase: 'pass_screen',
+        selectedCards: [],
+        validationMessage: null,
+    });
+}
 
-        if (stage === 'fork') {
-            const forkCards = canFork(hands[pendingPlayerIndex], currentTrick);
-            let newState = applyFork(gameState, pendingPlayerIndex, forkCards);
+// Calculates scores, determines if game is over, and returns final round/game state.
+function finalizeRound(state) {
+    const { finishOrder: fo, loser } = getRoundResult(state);
+    const pts = calculateRoundPoints(fo, loser, state.teams);
+    const newScores = applyRoundScore(state.scores, pts, state.teams);
+    const { over } = isGameOver(newScores);
+    return {
+        ...state,
+        scores: newScores,
+        phase: over ? 'game_over' : 'round_over',
+        roundPoints: pts,
+        selectedCards: [],
+        validationMessage: null,
+    };
+}
 
-            if (newState.hands[pendingPlayerIndex].length === 0 && !newState.finishOrder.includes(pendingPlayerIndex)) {
-                newState = { ...newState, finishOrder: [...newState.finishOrder, pendingPlayerIndex] };
+// Tracks finish order if a player's hand was emptied, then checks for sweep/round-over.
+function resolveAfterForkAction(state, playerIndex) {
+    let s = state;
+    if (s.hands[playerIndex].length === 0 && !s.finishOrder.includes(playerIndex)) {
+        s = { ...s, finishOrder: [...s.finishOrder, playerIndex] };
+    }
+    const swept = applyTeamSweep(s);
+    return swept ?? s;
+}
+
+export function gameReducer(state, action) {
+    switch (action.type) {
+        case 'START_ROUND': {
+            const { hands, starterIndex, existingScores, roundNumber } = action;
+            const redTeam = findRedTenHolders(hands);
+            const blackTeam = Array.from({ length: PLAYER_COUNT }, (_, i) => i)
+                .filter(i => !redTeam.includes(i));
+            return {
+                ...initialState,
+                phase: 'hand_ordering',
+                hands,
+                activePlayerIndex: starterIndex,
+                trickStarter: starterIndex,
+                teams: { red: redTeam, black: blackTeam },
+                scores: existingScores,
+                roundNumber,
+            };
+        }
+
+        case 'PLAY_CARD': {
+            const { cards } = action;
+            if (cards.length === 0) {
+                return { ...state, validationMessage: 'Select cards to play first.' };
             }
-
-            const forkSwept = applyTeamSweep(newState);
-            const forkResolved = forkSwept ?? newState;
-            if (isRoundOver(forkResolved)) {
-                const { finishOrder: fo, loser } = getRoundResult(forkResolved);
-                const pts = calculateRoundPoints(fo, loser, forkResolved.teams);
-                const newScores = applyRoundScore(forkResolved.scores, pts, forkResolved.teams);
-                const { over } = isGameOver(newScores);
-                setRoundPoints(pts);
-                setGameState({ ...forkResolved, scores: newScores, forkWindow: null, phase: over ? 'game_over' : 'round_over' });
-                return;
+            const result = playCard(state, state.activePlayerIndex, cards);
+            if (result.error) {
+                return { ...state, validationMessage: result.error };
             }
+            return resolveAfterPlay(result);
+        }
 
-            const drawbackStart = (pendingPlayerIndex + 1) % PLAYER_COUNT;
-            const dbCandidate = findDrawbackCandidate(forkResolved.hands, value, drawbackStart, pendingPlayerIndex);
+        case 'PASS_TURN': {
+            const result = passTurn(state, state.activePlayerIndex);
+            if (result.error) {
+                return { ...state, validationMessage: result.error };
+            }
+            return skipIneligiblePlayers({
+                ...result,
+                phase: 'pass_screen',
+                validationMessage: null,
+                selectedCards: [],
+            });
+        }
 
-            if (dbCandidate !== null) {
-                setForkReady(false);
-                setGameState({
-                    ...forkResolved,
-                    phase: 'fork_window',
-                    forkWindow: { value, pendingPlayerIndex: dbCandidate, stage: 'drawback' },
-                });
-            } else {
-                setForkReady(false);
-                setGameState(skipIneligiblePlayers({
-                    ...forkResolved,
+        case 'SELECT_CARD': {
+            const { card } = action;
+            const already = state.selectedCards.some(c => c.id === card.id);
+            return {
+                ...state,
+                validationMessage: null,
+                selectedCards: already
+                    ? state.selectedCards.filter(c => c.id !== card.id)
+                    : [...state.selectedCards, card],
+            };
+        }
+
+        case 'FORK_ACCEPT': {
+            const { stage, value, pendingPlayerIndex } = state.forkWindow;
+
+            if (stage === 'fork') {
+                const forkCards = canFork(state.hands[pendingPlayerIndex], state.currentTrick);
+                const forked = applyFork(state, pendingPlayerIndex, forkCards);
+                const resolved = resolveAfterForkAction(forked, pendingPlayerIndex);
+
+                if (isRoundOver(resolved)) {
+                    return finalizeRound({ ...resolved, forkWindow: null });
+                }
+
+                const drawbackStart = (pendingPlayerIndex + 1) % PLAYER_COUNT;
+                const dbCandidate = findDrawbackCandidate(resolved.hands, value, drawbackStart, pendingPlayerIndex);
+
+                if (dbCandidate !== null) {
+                    return {
+                        ...resolved,
+                        phase: 'fork_window',
+                        forkWindow: { value, pendingPlayerIndex: dbCandidate, stage: 'drawback' },
+                        forkReady: false,
+                    };
+                }
+                return skipIneligiblePlayers({
+                    ...resolved,
                     activePlayerIndex: (pendingPlayerIndex + 1) % PLAYER_COUNT,
                     phase: 'pass_screen',
                     forkWindow: null,
-                }));
+                    forkReady: false,
+                });
             }
-        } else {
+
             // stage === 'drawback'
-            const drawbackCard = canDrawback(hands[pendingPlayerIndex], value);
-            let newState = applyDrawback(gameState, pendingPlayerIndex, drawbackCard);
+            const drawbackCard = canDrawback(state.hands[pendingPlayerIndex], value);
+            const drawbacked = applyDrawback(state, pendingPlayerIndex, drawbackCard);
+            const resolved = resolveAfterForkAction(drawbacked, pendingPlayerIndex);
 
-            if (newState.hands[pendingPlayerIndex].length === 0 && !newState.finishOrder.includes(pendingPlayerIndex)) {
-                newState = { ...newState, finishOrder: [...newState.finishOrder, pendingPlayerIndex] };
+            if (isRoundOver(resolved)) {
+                return finalizeRound({ ...resolved, forkWindow: null });
             }
-
-            const dbSwept = applyTeamSweep(newState);
-            const dbResolved = dbSwept ?? newState;
-
-            if (isRoundOver(dbResolved)) {
-                const { finishOrder: fo, loser } = getRoundResult(dbResolved);
-                const pts = calculateRoundPoints(fo, loser, dbResolved.teams);
-                const newScores = applyRoundScore(dbResolved.scores, pts, dbResolved.teams);
-                const { over } = isGameOver(newScores);
-                setRoundPoints(pts);
-                setGameState({ ...dbResolved, scores: newScores, forkWindow: null, phase: over ? 'game_over' : 'round_over' });
-            } else {
-                setForkReady(false);
-                setGameState(skipIneligiblePlayers({ ...dbResolved, phase: 'pass_screen', forkWindow: null }));
-            }
+            return skipIneligiblePlayers({
+                ...resolved,
+                phase: 'pass_screen',
+                forkWindow: null,
+                forkReady: false,
+            });
         }
-    }
 
-    function handleForkDecline() {
-        const { stage, value, pendingPlayerIndex } = forkWindow;
+        case 'FORK_DECLINE': {
+            const { stage, value, pendingPlayerIndex } = state.forkWindow;
 
-        if (stage === 'fork') {
-            const playedBy = currentTrick.playedBy;
-            const next = findForkCandidate(
-                hands, currentTrick,
-                (pendingPlayerIndex + 1) % PLAYER_COUNT,
-                playedBy,
-            );
-            if (next !== null) {
-                setForkReady(false);
-                setGameState(s => ({ ...s, forkWindow: { ...s.forkWindow, pendingPlayerIndex: next } }));
-            } else {
-                setForkReady(false);
-                setGameState(s => skipIneligiblePlayers({ ...s, phase: 'pass_screen', forkWindow: null }));
+            if (stage === 'fork') {
+                const playedBy = state.currentTrick.playedBy;
+                const next = findForkCandidate(
+                    state.hands, state.currentTrick,
+                    (pendingPlayerIndex + 1) % PLAYER_COUNT,
+                    playedBy,
+                );
+                if (next !== null) {
+                    return { ...state, forkWindow: { ...state.forkWindow, pendingPlayerIndex: next }, forkReady: false };
+                }
+                return skipIneligiblePlayers({ ...state, phase: 'pass_screen', forkWindow: null, forkReady: false });
             }
-        } else {
+
             // stage === 'drawback'
-            const forkingPlayer = currentTrick.playedBy;
+            const forkingPlayer = state.currentTrick.playedBy;
             const next = findDrawbackCandidate(
-                hands, value,
+                state.hands, value,
                 (pendingPlayerIndex + 1) % PLAYER_COUNT,
                 forkingPlayer,
             );
             if (next !== null) {
-                setForkReady(false);
-                setGameState(s => ({ ...s, forkWindow: { ...s.forkWindow, pendingPlayerIndex: next } }));
-            } else {
-                setForkReady(false);
-                setGameState(s => skipIneligiblePlayers({
-                    ...s,
-                    activePlayerIndex: (forkingPlayer + 1) % PLAYER_COUNT,
-                    phase: 'pass_screen',
-                    forkWindow: null,
-                }));
+                return { ...state, forkWindow: { ...state.forkWindow, pendingPlayerIndex: next }, forkReady: false };
             }
+            return skipIneligiblePlayers({
+                ...state,
+                activePlayerIndex: (forkingPlayer + 1) % PLAYER_COUNT,
+                phase: 'pass_screen',
+                forkWindow: null,
+                forkReady: false,
+            });
         }
-    }
 
-    // --- Action handlers ---
-
-    function handleCardClick(card) {
-        setValidationMessage(null);
-        setSelectedCards(prev =>
-            prev.some(c => c.id === card.id)
-                ? prev.filter(c => c.id !== card.id)
-                : [...prev, card]
-        );
-    }
-
-    function handlePlay() {
-        if (selectedCards.length === 0) {
-            setValidationMessage('Select cards to play first.');
-            return;
+        case 'ORDER_HAND_DONE': {
+            const { orderedHand } = action;
+            const newHands = state.hands.map((h, i) => i === state.orderingPlayerIndex ? orderedHand : h);
+            const next = state.orderingPlayerIndex + 1;
+            if (next >= PLAYER_COUNT) {
+                return { ...state, hands: newHands, phase: 'pass_screen' };
+            }
+            return {
+                ...state,
+                hands: newHands,
+                orderingPlayerIndex: next,
+                orderingReady: false,
+            };
         }
-        const result = playCard(gameState, activePlayerIndex, selectedCards);
-        if (result.error) {
-            setValidationMessage(result.error);
-            return;
-        }
-        afterSuccessfulPlay(result);
-    }
 
-    function handlePass() {
-        const result = passTurn(gameState, activePlayerIndex);
-        if (result.error) {
-            setValidationMessage(result.error);
-            return;
-        }
-        setValidationMessage(null);
-        setSelectedCards([]);
-        setGameState(skipIneligiblePlayers({ ...result, phase: 'pass_screen' }));
-    }
+        case 'SET_ORDERING_READY':
+            return { ...state, orderingReady: true };
 
-    function handleOrderingDone(orderedHand) {
-        const newHands = hands.map((h, i) => i === orderingPlayerIndex ? orderedHand : h);
-        const next = orderingPlayerIndex + 1;
-        if (next >= PLAYER_COUNT) {
-            setGameState(s => ({ ...s, hands: newHands, phase: 'pass_screen' }));
-        } else {
-            setOrderingPlayerIndex(next);
-            setOrderingReady(false);
-            setGameState(s => ({ ...s, hands: newHands }));
-        }
-    }
+        case 'SET_FORK_READY':
+            return { ...state, forkReady: true };
 
-    function handleNewGame() {
-        setGameState({ ...initialState });
+        case 'ENTER_PLAYING':
+            return { ...state, phase: 'playing' };
+
+        case 'NEW_GAME':
+            return { ...initialState };
+
+        default:
+            return state;
+    }
+}
+
+export function useGameEngine() {
+    const [state, dispatch] = useReducer(gameReducer, initialState);
+
+    const {
+        phase, activePlayerIndex, currentTrick,
+        hands, scores, revealedRedTens, teams, finishOrder, forkWindow,
+        selectedCards, validationMessage, forkReady,
+        orderingPlayerIndex, orderingReady, roundPoints,
+    } = state;
+
+    function startRound(existingScores, roundNumber) {
+        const { hands, starterIndex } = dealCards();
+        dispatch({ type: 'START_ROUND', hands, starterIndex, existingScores, roundNumber });
     }
 
     return {
-        // State
-        gameState,
-        selectedCards,
-        validationMessage,
-        forkReady,
-        orderingPlayerIndex,
-        orderingReady,
-        roundPoints,
-        // Derived
+        // Full state (for gameState.roundNumber access etc.)
+        gameState: state,
+        // Destructured state
         phase,
         activePlayerIndex,
         currentTrick,
@@ -289,17 +300,23 @@ export function useGameEngine() {
         teams,
         finishOrder,
         forkWindow,
+        selectedCards,
+        validationMessage,
+        forkReady,
+        orderingPlayerIndex,
+        orderingReady,
+        roundPoints,
         // Handlers
         startRound,
-        handlePlay,
-        handlePass,
-        handleCardClick,
-        handleForkAccept,
-        handleForkDecline,
-        handleOrderingDone,
-        handleNewGame,
-        setForkReady,
-        setOrderingReady,
-        setGameState,
+        handlePlay: () => dispatch({ type: 'PLAY_CARD', cards: selectedCards }),
+        handlePass: () => dispatch({ type: 'PASS_TURN' }),
+        handleCardClick: (card) => dispatch({ type: 'SELECT_CARD', card }),
+        handleForkAccept: () => dispatch({ type: 'FORK_ACCEPT' }),
+        handleForkDecline: () => dispatch({ type: 'FORK_DECLINE' }),
+        handleOrderingDone: (orderedHand) => dispatch({ type: 'ORDER_HAND_DONE', orderedHand }),
+        handleNewGame: () => dispatch({ type: 'NEW_GAME' }),
+        setForkReady: () => dispatch({ type: 'SET_FORK_READY' }),
+        setOrderingReady: () => dispatch({ type: 'SET_ORDERING_READY' }),
+        enterPlaying: () => dispatch({ type: 'ENTER_PLAYING' }),
     };
 }
