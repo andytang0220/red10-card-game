@@ -101,9 +101,15 @@ function resolveAfterForkAction(state, playerIndex) {
     return swept ?? s;
 }
 
+// Returns true if action.playerIndex is present and doesn't match the expected player.
+function wrongPlayer(action, expectedPlayerIndex) {
+    return action.playerIndex !== undefined && action.playerIndex !== expectedPlayerIndex;
+}
+
 export function gameReducer(state, action) {
     switch (action.type) {
         case 'START_ROUND': {
+            if (state.phase !== 'setup' && state.phase !== 'round_over') return state;
             const { hands, starterIndex, existingScores, roundNumber } = action;
             const redTeam = findRedTenHolders(hands);
             const blackTeam = Array.from({ length: PLAYER_COUNT }, (_, i) => i)
@@ -121,6 +127,8 @@ export function gameReducer(state, action) {
         }
 
         case 'PLAY_CARD': {
+            if (state.phase !== 'playing') return state;
+            if (wrongPlayer(action, state.activePlayerIndex)) return state;
             const { cards } = action;
             if (cards.length === 0) {
                 return { ...state, validationMessage: 'Select cards to play first.' };
@@ -133,6 +141,8 @@ export function gameReducer(state, action) {
         }
 
         case 'PASS_TURN': {
+            if (state.phase !== 'playing') return state;
+            if (wrongPlayer(action, state.activePlayerIndex)) return state;
             const result = passTurn(state, state.activePlayerIndex);
             if (result.error) {
                 return { ...state, validationMessage: result.error };
@@ -146,6 +156,8 @@ export function gameReducer(state, action) {
         }
 
         case 'SELECT_CARD': {
+            if (state.phase !== 'playing') return state;
+            if (wrongPlayer(action, state.activePlayerIndex)) return state;
             const { card } = action;
             const already = state.selectedCards.some(c => c.id === card.id);
             return {
@@ -158,6 +170,8 @@ export function gameReducer(state, action) {
         }
 
         case 'FORK_ACCEPT': {
+            if (state.phase !== 'fork_window') return state;
+            if (wrongPlayer(action, state.forkWindow.pendingPlayerIndex)) return state;
             const { stage, value, pendingPlayerIndex } = state.forkWindow;
 
             if (stage === 'fork') {
@@ -206,6 +220,8 @@ export function gameReducer(state, action) {
         }
 
         case 'FORK_DECLINE': {
+            if (state.phase !== 'fork_window') return state;
+            if (wrongPlayer(action, state.forkWindow.pendingPlayerIndex)) return state;
             const { stage, value, pendingPlayerIndex } = state.forkWindow;
 
             if (stage === 'fork') {
@@ -241,6 +257,8 @@ export function gameReducer(state, action) {
         }
 
         case 'ORDER_HAND_DONE': {
+            if (state.phase !== 'hand_ordering') return state;
+            if (wrongPlayer(action, state.orderingPlayerIndex)) return state;
             const { orderedHand } = action;
             const newHands = state.hands.map((h, i) => i === state.orderingPlayerIndex ? orderedHand : h);
             const next = state.orderingPlayerIndex + 1;
@@ -256,15 +274,22 @@ export function gameReducer(state, action) {
         }
 
         case 'SET_ORDERING_READY':
+            if (state.phase !== 'hand_ordering') return state;
+            if (wrongPlayer(action, state.orderingPlayerIndex)) return state;
             return { ...state, orderingReady: true };
 
         case 'SET_FORK_READY':
+            if (state.phase !== 'fork_window') return state;
+            if (wrongPlayer(action, state.forkWindow.pendingPlayerIndex)) return state;
             return { ...state, forkReady: true };
 
         case 'ENTER_PLAYING':
+            if (state.phase !== 'pass_screen') return state;
+            if (wrongPlayer(action, state.activePlayerIndex)) return state;
             return { ...state, phase: 'playing' };
 
         case 'NEW_GAME':
+            if (state.phase !== 'game_over') return state;
             return { ...initialState };
 
         default:

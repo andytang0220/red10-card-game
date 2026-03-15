@@ -72,21 +72,34 @@ describe('START_ROUND', () => {
 describe('SELECT_CARD', () => {
     it('adds a card to selectedCards', () => {
         const card = c('7','♥');
-        const result = gameReducer(initialState, { type: 'SELECT_CARD', card });
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'SELECT_CARD', card });
         expect(result.selectedCards).toEqual([card]);
     });
 
     it('removes a card that is already selected', () => {
         const card = c('7','♥');
-        const state = makeState({ selectedCards: [card] });
+        const state = makeState({ phase: 'playing', selectedCards: [card] });
         const result = gameReducer(state, { type: 'SELECT_CARD', card });
         expect(result.selectedCards).toEqual([]);
     });
 
     it('clears validationMessage', () => {
-        const state = makeState({ validationMessage: 'some error' });
+        const state = makeState({ phase: 'playing', validationMessage: 'some error' });
         const result = gameReducer(state, { type: 'SELECT_CARD', card: c('7','♥') });
         expect(result.validationMessage).toBeNull();
+    });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'pass_screen' });
+        const result = gameReducer(state, { type: 'SELECT_CARD', card: c('7','♥') });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({ phase: 'playing', activePlayerIndex: 2 });
+        const result = gameReducer(state, { type: 'SELECT_CARD', card: c('7','♥'), playerIndex: 3 });
+        expect(result).toBe(state);
     });
 });
 
@@ -94,7 +107,8 @@ describe('SELECT_CARD', () => {
 
 describe('PLAY_CARD', () => {
     it('returns validation error when no cards selected', () => {
-        const result = gameReducer(initialState, { type: 'PLAY_CARD', cards: [] });
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'PLAY_CARD', cards: [] });
         expect(result.validationMessage).toBe('Select cards to play first.');
     });
 
@@ -119,6 +133,22 @@ describe('PLAY_CARD', () => {
         expect(result.selectedCards).toEqual([]);
         expect(result.hands[0]).toHaveLength(1);
     });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'pass_screen' });
+        const result = gameReducer(state, { type: 'PLAY_CARD', cards: [c('7','♥')] });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({
+            phase: 'playing',
+            hands: [[c('7','♥')], [c('8','♦')], [c('6','♣')], [c('5','♥')], [c('4','♠')]],
+            activePlayerIndex: 0,
+        });
+        const result = gameReducer(state, { type: 'PLAY_CARD', cards: [c('7','♥')], playerIndex: 1 });
+        expect(result).toBe(state);
+    });
 });
 
 // --- PASS_TURN ---
@@ -142,6 +172,22 @@ describe('PASS_TURN', () => {
         expect(result.passesThisRound).toContain(0);
         expect(result.selectedCards).toEqual([]);
         expect(result.validationMessage).toBeNull();
+    });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'fork_window' });
+        const result = gameReducer(state, { type: 'PASS_TURN' });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({
+            phase: 'playing',
+            activePlayerIndex: 0,
+            currentTrick: { type: TRICK_TYPES.SINGLE, value: 12, length: 1, playedBy: 2, cards: [c('Q','♦')] },
+        });
+        const result = gameReducer(state, { type: 'PASS_TURN', playerIndex: 3 });
+        expect(result).toBe(state);
     });
 });
 
@@ -193,6 +239,38 @@ describe('FORK_DECLINE (fork stage)', () => {
     });
 });
 
+describe('FORK_ACCEPT / FORK_DECLINE guards', () => {
+    it('FORK_ACCEPT is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'FORK_ACCEPT' });
+        expect(result).toBe(state);
+    });
+
+    it('FORK_DECLINE is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'FORK_DECLINE' });
+        expect(result).toBe(state);
+    });
+
+    it('FORK_ACCEPT is ignored from wrong player', () => {
+        const state = makeState({
+            phase: 'fork_window',
+            forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
+        });
+        const result = gameReducer(state, { type: 'FORK_ACCEPT', playerIndex: 2 });
+        expect(result).toBe(state);
+    });
+
+    it('FORK_DECLINE is ignored from wrong player', () => {
+        const state = makeState({
+            phase: 'fork_window',
+            forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
+        });
+        const result = gameReducer(state, { type: 'FORK_DECLINE', playerIndex: 0 });
+        expect(result).toBe(state);
+    });
+});
+
 // --- ORDER_HAND_DONE ---
 
 describe('ORDER_HAND_DONE', () => {
@@ -224,15 +302,41 @@ describe('ORDER_HAND_DONE', () => {
 
 describe('SET_ORDERING_READY', () => {
     it('sets orderingReady to true', () => {
-        const result = gameReducer(initialState, { type: 'SET_ORDERING_READY' });
+        const state = makeState({ phase: 'hand_ordering' });
+        const result = gameReducer(state, { type: 'SET_ORDERING_READY' });
         expect(result.orderingReady).toBe(true);
+    });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'SET_ORDERING_READY' });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({ phase: 'hand_ordering', orderingPlayerIndex: 2 });
+        const result = gameReducer(state, { type: 'SET_ORDERING_READY', playerIndex: 0 });
+        expect(result).toBe(state);
     });
 });
 
 describe('SET_FORK_READY', () => {
     it('sets forkReady to true', () => {
-        const result = gameReducer(initialState, { type: 'SET_FORK_READY' });
+        const state = makeState({ phase: 'fork_window', forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' } });
+        const result = gameReducer(state, { type: 'SET_FORK_READY' });
         expect(result.forkReady).toBe(true);
+    });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'SET_FORK_READY' });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({ phase: 'fork_window', forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' } });
+        const result = gameReducer(state, { type: 'SET_FORK_READY', playerIndex: 3 });
+        expect(result).toBe(state);
     });
 });
 
@@ -241,6 +345,18 @@ describe('ENTER_PLAYING', () => {
         const state = makeState({ phase: 'pass_screen' });
         const result = gameReducer(state, { type: 'ENTER_PLAYING' });
         expect(result.phase).toBe('playing');
+    });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'ENTER_PLAYING' });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({ phase: 'pass_screen', activePlayerIndex: 3 });
+        const result = gameReducer(state, { type: 'ENTER_PLAYING', playerIndex: 1 });
+        expect(result).toBe(state);
     });
 });
 
@@ -255,5 +371,56 @@ describe('NEW_GAME', () => {
         expect(result.phase).toBe('setup');
         expect(result.scores).toEqual([0, 0, 0, 0, 0]);
         expect(result.selectedCards).toEqual([]);
+    });
+
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'NEW_GAME' });
+        expect(result).toBe(state);
+    });
+});
+
+describe('START_ROUND guards', () => {
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, {
+            type: 'START_ROUND',
+            hands: [[], [], [], [], []],
+            starterIndex: 0,
+            existingScores: [0, 0, 0, 0, 0],
+            roundNumber: 1,
+        });
+        expect(result).toBe(state);
+    });
+
+    it('is allowed from round_over phase', () => {
+        const state = makeState({ phase: 'round_over' });
+        const hands = [[c('4','♥')], [c('5','♠')], [c('6','♦')], [c('7','♣')], [c('8','♥')]];
+        const result = gameReducer(state, {
+            type: 'START_ROUND',
+            hands,
+            starterIndex: 0,
+            existingScores: [0, 0, 0, 0, 0],
+            roundNumber: 2,
+        });
+        expect(result.phase).toBe('hand_ordering');
+    });
+});
+
+describe('ORDER_HAND_DONE guards', () => {
+    it('is ignored in wrong phase', () => {
+        const state = makeState({ phase: 'playing' });
+        const result = gameReducer(state, { type: 'ORDER_HAND_DONE', orderedHand: [] });
+        expect(result).toBe(state);
+    });
+
+    it('is ignored from wrong player', () => {
+        const state = makeState({
+            phase: 'hand_ordering',
+            hands: [[c('7','♥')], [c('8','♦')], [c('9','♣')], [c('10','♠')], [c('J','♥')]],
+            orderingPlayerIndex: 2,
+        });
+        const result = gameReducer(state, { type: 'ORDER_HAND_DONE', orderedHand: [c('7','♥')], playerIndex: 0 });
+        expect(result).toBe(state);
     });
 });
