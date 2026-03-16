@@ -148,12 +148,6 @@ export class GameRoom {
 
         this.readyForNextRound[playerIndex] = true;
 
-        // Notify the player they're waiting
-        const socket = this.sockets[playerIndex];
-        if (socket) {
-            socket.emit('waiting_for_others');
-        }
-
         // Broadcast updated ready count to all players
         const readyCount = this.readyForNextRound.filter(Boolean).length;
         for (let i = 0; i < PLAYER_COUNT; i++) {
