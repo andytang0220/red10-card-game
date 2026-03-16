@@ -23,7 +23,6 @@ export const initialState = {
     // UI state
     selectedCards: [],
     validationMessage: null,
-    forkReady: false,
     orderingPlayerIndex: 0,
     orderingReady: false,
     roundPoints: { red: 0, black: 0 },
@@ -51,25 +50,20 @@ function resolveAfterPlay(state) {
         }
     }
 
-    // Open a fork window if a SINGLE was just played and someone can fork it
+    // Set fork window metadata if a SINGLE was just played and someone can fork it
+    let forkWindow = null;
     if (s.currentTrick?.type === TRICK_TYPES.SINGLE) {
         const playedBy = s.currentTrick.playedBy;
         const candidate = findForkCandidate(s.hands, s.currentTrick, s.activePlayerIndex, playedBy);
         if (candidate !== null) {
-            return {
-                ...s,
-                phase: 'fork_window',
-                forkWindow: { value: s.currentTrick.value, pendingPlayerIndex: candidate, stage: 'fork' },
-                forkReady: false,
-                selectedCards: [],
-                validationMessage: null,
-            };
+            forkWindow = { value: s.currentTrick.value, pendingPlayerIndex: candidate, stage: 'fork' };
         }
     }
 
     return skipIneligiblePlayers({
         ...s,
         phase: 'pass_screen',
+        forkWindow,
         selectedCards: [],
         validationMessage: null,
     });
@@ -137,7 +131,7 @@ export function gameReducer(state, action) {
             if (result.error) {
                 return { ...state, validationMessage: result.error };
             }
-            return resolveAfterPlay(result);
+            return resolveAfterPlay({ ...result, forkWindow: null });
         }
 
         case 'PASS_TURN': {
@@ -170,7 +164,7 @@ export function gameReducer(state, action) {
         }
 
         case 'FORK_ACCEPT': {
-            if (state.phase !== 'fork_window') return state;
+            if (!state.forkWindow) return state;
             if (wrongPlayer(action, state.forkWindow.pendingPlayerIndex)) return state;
             const { stage, value, pendingPlayerIndex } = state.forkWindow;
 
@@ -189,9 +183,7 @@ export function gameReducer(state, action) {
                 if (dbCandidate !== null) {
                     return {
                         ...resolved,
-                        phase: 'fork_window',
                         forkWindow: { value, pendingPlayerIndex: dbCandidate, stage: 'drawback' },
-                        forkReady: false,
                     };
                 }
                 return skipIneligiblePlayers({
@@ -199,7 +191,6 @@ export function gameReducer(state, action) {
                     activePlayerIndex: (pendingPlayerIndex + 1) % PLAYER_COUNT,
                     phase: 'pass_screen',
                     forkWindow: null,
-                    forkReady: false,
                 });
             }
 
@@ -215,44 +206,6 @@ export function gameReducer(state, action) {
                 ...resolved,
                 phase: 'pass_screen',
                 forkWindow: null,
-                forkReady: false,
-            });
-        }
-
-        case 'FORK_DECLINE': {
-            if (state.phase !== 'fork_window') return state;
-            if (wrongPlayer(action, state.forkWindow.pendingPlayerIndex)) return state;
-            const { stage, value, pendingPlayerIndex } = state.forkWindow;
-
-            if (stage === 'fork') {
-                const playedBy = state.currentTrick.playedBy;
-                const next = findForkCandidate(
-                    state.hands, state.currentTrick,
-                    (pendingPlayerIndex + 1) % PLAYER_COUNT,
-                    playedBy,
-                );
-                if (next !== null) {
-                    return { ...state, forkWindow: { ...state.forkWindow, pendingPlayerIndex: next }, forkReady: false };
-                }
-                return skipIneligiblePlayers({ ...state, phase: 'pass_screen', forkWindow: null, forkReady: false });
-            }
-
-            // stage === 'drawback'
-            const forkingPlayer = state.currentTrick.playedBy;
-            const next = findDrawbackCandidate(
-                state.hands, value,
-                (pendingPlayerIndex + 1) % PLAYER_COUNT,
-                forkingPlayer,
-            );
-            if (next !== null) {
-                return { ...state, forkWindow: { ...state.forkWindow, pendingPlayerIndex: next }, forkReady: false };
-            }
-            return skipIneligiblePlayers({
-                ...state,
-                activePlayerIndex: (forkingPlayer + 1) % PLAYER_COUNT,
-                phase: 'pass_screen',
-                forkWindow: null,
-                forkReady: false,
             });
         }
 
@@ -278,11 +231,6 @@ export function gameReducer(state, action) {
             if (wrongPlayer(action, state.orderingPlayerIndex)) return state;
             return { ...state, orderingReady: true };
 
-        case 'SET_FORK_READY':
-            if (state.phase !== 'fork_window') return state;
-            if (wrongPlayer(action, state.forkWindow.pendingPlayerIndex)) return state;
-            return { ...state, forkReady: true };
-
         case 'ENTER_PLAYING':
             if (state.phase !== 'pass_screen') return state;
             if (wrongPlayer(action, state.activePlayerIndex)) return state;
@@ -303,7 +251,7 @@ export function useGameEngine() {
     const {
         phase, activePlayerIndex, currentTrick,
         hands, scores, revealedRedTens, teams, finishOrder, forkWindow,
-        selectedCards, validationMessage, forkReady,
+        selectedCards, validationMessage,
         orderingPlayerIndex, orderingReady, roundPoints,
     } = state;
 
@@ -327,7 +275,6 @@ export function useGameEngine() {
         forkWindow,
         selectedCards,
         validationMessage,
-        forkReady,
         orderingPlayerIndex,
         orderingReady,
         roundPoints,
@@ -337,10 +284,8 @@ export function useGameEngine() {
         handlePass: () => dispatch({ type: 'PASS_TURN' }),
         handleCardClick: (card) => dispatch({ type: 'SELECT_CARD', card }),
         handleForkAccept: () => dispatch({ type: 'FORK_ACCEPT' }),
-        handleForkDecline: () => dispatch({ type: 'FORK_DECLINE' }),
         handleOrderingDone: (orderedHand) => dispatch({ type: 'ORDER_HAND_DONE', orderedHand }),
         handleNewGame: () => dispatch({ type: 'NEW_GAME' }),
-        setForkReady: () => dispatch({ type: 'SET_FORK_READY' }),
         setOrderingReady: () => dispatch({ type: 'SET_ORDERING_READY' }),
         enterPlaying: () => dispatch({ type: 'ENTER_PLAYING' }),
     };

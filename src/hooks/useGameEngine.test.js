@@ -50,7 +50,7 @@ describe('START_ROUND', () => {
     });
 
     it('resets UI state', () => {
-        const dirty = makeState({ selectedCards: [c('7','♥')], validationMessage: 'error', forkReady: true });
+        const dirty = makeState({ selectedCards: [c('7','♥')], validationMessage: 'error' });
         const hands = [[c('4','♥')], [c('5','♠')], [c('6','♦')], [c('7','♣')], [c('8','♥')]];
         const result = gameReducer(dirty, {
             type: 'START_ROUND',
@@ -61,7 +61,6 @@ describe('START_ROUND', () => {
         });
         expect(result.selectedCards).toEqual([]);
         expect(result.validationMessage).toBeNull();
-        expect(result.forkReady).toBe(false);
         expect(result.orderingPlayerIndex).toBe(0);
         expect(result.orderingReady).toBe(false);
     });
@@ -149,6 +148,19 @@ describe('PLAY_CARD', () => {
         const result = gameReducer(state, { type: 'PLAY_CARD', cards: [c('7','♥')], playerIndex: 1 });
         expect(result).toBe(state);
     });
+
+    it('clears an open fork window when next player plays', () => {
+        const state = makeState({
+            phase: 'playing',
+            hands: [[c('9','♠')], [c('8','♦'), c('K','♣')], [c('6','♣')], [c('5','♥')], [c('4','♠')]],
+            activePlayerIndex: 1,
+            currentTrick: { type: TRICK_TYPES.SINGLE, value: 7, length: 1, playedBy: 0, cards: [c('7','♣')] },
+            forkWindow: { value: 7, pendingPlayerIndex: 3, stage: 'fork' },
+        });
+        const result = gameReducer(state, { type: 'PLAY_CARD', cards: [c('K','♣')] });
+        // Fork window should be cleared (opportunity lost)
+        expect(result.forkWindow).toBeNull();
+    });
 });
 
 // --- PASS_TURN ---
@@ -175,7 +187,7 @@ describe('PASS_TURN', () => {
     });
 
     it('is ignored in wrong phase', () => {
-        const state = makeState({ phase: 'fork_window' });
+        const state = makeState({ phase: 'setup' });
         const result = gameReducer(state, { type: 'PASS_TURN' });
         expect(result).toBe(state);
     });
@@ -191,12 +203,12 @@ describe('PASS_TURN', () => {
     });
 });
 
-// --- FORK_ACCEPT / FORK_DECLINE ---
+// --- FORK_ACCEPT ---
 
 describe('FORK_ACCEPT (fork stage)', () => {
     it('applies fork and checks for drawback candidate', () => {
         const state = makeState({
-            phase: 'fork_window',
+            phase: 'pass_screen',
             hands: [
                 [c('9','♠')],                        // player 0
                 [c('7','♥'), c('7','♠'), c('K','♦')], // player 1: can fork
@@ -207,23 +219,19 @@ describe('FORK_ACCEPT (fork stage)', () => {
             activePlayerIndex: 1,
             currentTrick: { type: TRICK_TYPES.SINGLE, value: 7, length: 1, playedBy: 0, cards: [c('7','♣')] },
             forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
-            forkReady: true,
         });
         const result = gameReducer(state, { type: 'FORK_ACCEPT' });
         // Fork applied, now looking for drawback
         expect(result.forkWindow.stage).toBe('drawback');
         expect(result.forkWindow.pendingPlayerIndex).toBe(2);
-        expect(result.forkReady).toBe(false);
     });
-});
 
-describe('FORK_DECLINE (fork stage)', () => {
-    it('advances to next fork candidate or exits fork window', () => {
+    it('is valid during pass_screen phase', () => {
         const state = makeState({
-            phase: 'fork_window',
+            phase: 'pass_screen',
             hands: [
                 [c('9','♠')],
-                [c('7','♥'), c('7','♠')],   // player 1: can fork but declines
+                [c('7','♥'), c('7','♠'), c('K','♦')],
                 [c('8','♦')],
                 [c('6','♣')],
                 [c('5','♥')],
@@ -232,41 +240,26 @@ describe('FORK_DECLINE (fork stage)', () => {
             currentTrick: { type: TRICK_TYPES.SINGLE, value: 7, length: 1, playedBy: 0, cards: [c('7','♣')] },
             forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
         });
-        const result = gameReducer(state, { type: 'FORK_DECLINE' });
-        // No other fork candidates, should exit to pass_screen
-        expect(result.phase).toBe('pass_screen');
+        const result = gameReducer(state, { type: 'FORK_ACCEPT' });
+        // Should process (not return state unchanged)
+        expect(result).not.toBe(state);
         expect(result.forkWindow).toBeNull();
     });
 });
 
-describe('FORK_ACCEPT / FORK_DECLINE guards', () => {
-    it('FORK_ACCEPT is ignored in wrong phase', () => {
-        const state = makeState({ phase: 'playing' });
+describe('FORK_ACCEPT guards', () => {
+    it('is ignored when no fork window exists', () => {
+        const state = makeState({ phase: 'playing', forkWindow: null });
         const result = gameReducer(state, { type: 'FORK_ACCEPT' });
         expect(result).toBe(state);
     });
 
-    it('FORK_DECLINE is ignored in wrong phase', () => {
-        const state = makeState({ phase: 'playing' });
-        const result = gameReducer(state, { type: 'FORK_DECLINE' });
-        expect(result).toBe(state);
-    });
-
-    it('FORK_ACCEPT is ignored from wrong player', () => {
+    it('is ignored from wrong player', () => {
         const state = makeState({
-            phase: 'fork_window',
+            phase: 'pass_screen',
             forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
         });
         const result = gameReducer(state, { type: 'FORK_ACCEPT', playerIndex: 2 });
-        expect(result).toBe(state);
-    });
-
-    it('FORK_DECLINE is ignored from wrong player', () => {
-        const state = makeState({
-            phase: 'fork_window',
-            forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
-        });
-        const result = gameReducer(state, { type: 'FORK_DECLINE', playerIndex: 0 });
         expect(result).toBe(state);
     });
 });
@@ -316,26 +309,6 @@ describe('SET_ORDERING_READY', () => {
     it('is ignored from wrong player', () => {
         const state = makeState({ phase: 'hand_ordering', orderingPlayerIndex: 2 });
         const result = gameReducer(state, { type: 'SET_ORDERING_READY', playerIndex: 0 });
-        expect(result).toBe(state);
-    });
-});
-
-describe('SET_FORK_READY', () => {
-    it('sets forkReady to true', () => {
-        const state = makeState({ phase: 'fork_window', forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' } });
-        const result = gameReducer(state, { type: 'SET_FORK_READY' });
-        expect(result.forkReady).toBe(true);
-    });
-
-    it('is ignored in wrong phase', () => {
-        const state = makeState({ phase: 'playing' });
-        const result = gameReducer(state, { type: 'SET_FORK_READY' });
-        expect(result).toBe(state);
-    });
-
-    it('is ignored from wrong player', () => {
-        const state = makeState({ phase: 'fork_window', forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' } });
-        const result = gameReducer(state, { type: 'SET_FORK_READY', playerIndex: 3 });
         expect(result).toBe(state);
     });
 });
