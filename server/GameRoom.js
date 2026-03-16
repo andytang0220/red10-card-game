@@ -1,6 +1,7 @@
 import { gameReducer, initialState } from '../src/hooks/useGameEngine.js';
 import { getPlayerView } from '../src/logic/viewFilter.js';
 import { dealCards } from '../src/logic/round.js';
+import crypto from 'crypto';
 
 const PLAYER_COUNT = 5;
 
@@ -13,28 +14,48 @@ function generateRoomCode() {
     return code;
 }
 
+function generatePlayerId() {
+    return crypto.randomBytes(16).toString('hex');
+}
+
 export class GameRoom {
     constructor(code) {
         this.code = code || generateRoomCode();
         this.sockets = new Array(PLAYER_COUNT).fill(null);
+        this.playerIds = new Array(PLAYER_COUNT).fill(null);
         this.state = { ...initialState };
         this.started = false;
         this.orderedHands = new Array(PLAYER_COUNT).fill(null);
     }
 
     get playerCount() {
+        return this.playerIds.filter(id => id !== null).length;
+    }
+
+    get connectedCount() {
         return this.sockets.filter(s => s !== null).length;
     }
 
     addPlayer(socket) {
-        const index = this.sockets.indexOf(null);
+        const index = this.playerIds.indexOf(null);
         if (index === -1) return null;
+        const playerId = generatePlayerId();
         this.sockets[index] = socket;
-        return index;
+        this.playerIds[index] = playerId;
+        return { index, playerId };
     }
 
-    removePlayer(playerIndex) {
+    reconnectPlayer(playerIndex, socket) {
+        this.sockets[playerIndex] = socket;
+    }
+
+    findPlayerByToken(playerId) {
+        return this.playerIds.indexOf(playerId);
+    }
+
+    disconnectPlayer(playerIndex) {
         this.sockets[playerIndex] = null;
+        // Keep playerIds[playerIndex] so the player can reconnect
     }
 
     handleAction(playerIndex, action) {
@@ -132,13 +153,17 @@ export class GameRoom {
         this.broadcastState();
     }
 
+    sendStateTo(playerIndex) {
+        const socket = this.sockets[playerIndex];
+        if (socket) {
+            const view = getPlayerView(this.state, playerIndex);
+            socket.emit('state_update', view);
+        }
+    }
+
     broadcastState() {
         for (let i = 0; i < PLAYER_COUNT; i++) {
-            const socket = this.sockets[i];
-            if (socket) {
-                const view = getPlayerView(this.state, i);
-                socket.emit('state_update', view);
-            }
+            this.sendStateTo(i);
         }
     }
 }

@@ -1,8 +1,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
+const SESSION_KEY = 'red10_session';
+
+function saveSession(code, playerId) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ code, playerId }));
+}
+
+function loadSession() {
+    try {
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const { code, playerId } = JSON.parse(raw);
+        if (code && playerId) return { code, playerId };
+    } catch { /* ignore */ }
+    return null;
+}
+
+function clearSession() {
+    sessionStorage.removeItem(SESSION_KEY);
+}
+
 export function useMultiplayerEngine() {
     const socketRef = useRef(null);
+    const reconnectAttemptedRef = useRef(false);
 
     // Connection / lobby state
     const [connected, setConnected] = useState(false);
@@ -25,17 +46,39 @@ export function useMultiplayerEngine() {
         const socket = io({ transports: ['websocket', 'polling'] });
         socketRef.current = socket;
 
-        socket.on('connect', () => setConnected(true));
+        socket.on('connect', () => {
+            setConnected(true);
+
+            // Attempt reconnection if we have a saved session
+            if (!reconnectAttemptedRef.current) {
+                reconnectAttemptedRef.current = true;
+                const session = loadSession();
+                if (session) {
+                    socket.emit('reconnect_room', session);
+                }
+            }
+        });
+
         socket.on('disconnect', () => setConnected(false));
 
-        socket.on('room_created', ({ code, playerIndex: pi }) => {
+        socket.on('room_created', ({ code, playerIndex: pi, playerId }) => {
             setRoomCode(code);
             setPlayerIndex(pi);
             setPlayerCount(1);
             setLobbyError(null);
+            saveSession(code, playerId);
         });
 
-        socket.on('room_joined', ({ playerIndex: pi, playerCount: pc }) => {
+        socket.on('room_joined', ({ code, playerIndex: pi, playerCount: pc, playerId }) => {
+            setRoomCode(code);
+            setPlayerIndex(pi);
+            setPlayerCount(pc);
+            setLobbyError(null);
+            saveSession(code, playerId);
+        });
+
+        socket.on('reconnected', ({ playerIndex: pi, playerCount: pc, code }) => {
+            setRoomCode(code);
             setPlayerIndex(pi);
             setPlayerCount(pc);
             setLobbyError(null);
@@ -49,7 +92,7 @@ export function useMultiplayerEngine() {
             setServerState(view);
             setInGame(true);
             setWaitingForOrdering(false);
-            // Clear selected cards when it's no longer our turn or phase changed
+            // Clear selected cards when state updates
             setSelectedCards([]);
             setValidationMessage(null);
         });
@@ -59,17 +102,22 @@ export function useMultiplayerEngine() {
         });
 
         socket.on('error', ({ message }) => {
-            if (!inGame) {
-                setLobbyError(message);
-            } else {
-                setValidationMessage(message);
-            }
+            setLobbyError(prev => prev);
+            // Use functional updates to read current inGame without dependency
+            setInGame(current => {
+                if (!current) {
+                    setLobbyError(message);
+                } else {
+                    setValidationMessage(message);
+                }
+                return current;
+            });
         });
 
         return () => {
             socket.disconnect();
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     const emit = useCallback((event, data) => {
         socketRef.current?.emit(event, data);
@@ -83,6 +131,7 @@ export function useMultiplayerEngine() {
 
     const joinRoom = useCallback((code) => {
         setLobbyError(null);
+        setRoomCode(code.toUpperCase());
         emit('join_room', { code });
     }, [emit]);
 
@@ -117,12 +166,11 @@ export function useMultiplayerEngine() {
     }, [emit]);
 
     const handleNewGame = useCallback(() => {
+        clearSession();
         emit('action', { type: 'NEW_GAME' });
     }, [emit]);
 
     const setOrderingReady = useCallback(() => {
-        // In multiplayer, there's no pass screen between players,
-        // so SET_ORDERING_READY is just local UI (proceed to ordering)
         emit('action', { type: 'SET_ORDERING_READY' });
     }, [emit]);
 
@@ -135,19 +183,16 @@ export function useMultiplayerEngine() {
     }, []);
 
     // Build the return object to match useGameEngine's shape
-    // When we have server state, use it; otherwise return defaults
     const s = serverState || {};
 
     return {
-        // Full state access (for gameState.roundNumber)
         gameState: serverState || { roundNumber: 1 },
 
-        // Game state fields from server
         phase: s.phase || 'setup',
         activePlayerIndex: s.activePlayerIndex ?? 0,
         currentTrick: s.currentTrick || null,
         hand: s.hand || [],
-        hands: s.hand ? undefined : [[], [], [], [], []], // not used in multiplayer views
+        hands: s.hand ? undefined : [[], [], [], [], []],
         handCounts: s.handCounts || [0, 0, 0, 0, 0],
         scores: s.scores || [0, 0, 0, 0, 0],
         revealedRedTens: s.revealedRedTens || [],
@@ -158,11 +203,9 @@ export function useMultiplayerEngine() {
         orderingReady: s.orderingReady ?? false,
         roundPoints: s.roundPoints || { red: 0, black: 0 },
 
-        // Client-local UI state
         selectedCards,
         validationMessage,
 
-        // Handlers
         startRound,
         handlePlay,
         handlePass,
@@ -173,7 +216,6 @@ export function useMultiplayerEngine() {
         setOrderingReady,
         enterPlaying,
 
-        // Multiplayer-specific
         connected,
         roomCode,
         playerIndex,

@@ -38,11 +38,12 @@ io.on('connection', (socket) => {
         const room = new GameRoom(code);
         rooms.set(code, room);
 
-        currentPlayerIndex = room.addPlayer(socket);
+        const { index, playerId } = room.addPlayer(socket);
+        currentPlayerIndex = index;
         currentRoom = room;
 
         socket.join(code);
-        socket.emit('room_created', { code, playerIndex: currentPlayerIndex });
+        socket.emit('room_created', { code, playerIndex: currentPlayerIndex, playerId });
     });
 
     socket.on('join_room', ({ code }) => {
@@ -64,18 +65,21 @@ io.on('connection', (socket) => {
             return;
         }
 
-        currentPlayerIndex = room.addPlayer(socket);
-        if (currentPlayerIndex === null) {
+        const result = room.addPlayer(socket);
+        if (result === null) {
             socket.emit('error', { message: 'Room is full.' });
             return;
         }
 
+        currentPlayerIndex = result.index;
         currentRoom = room;
         socket.join(upperCode);
 
         socket.emit('room_joined', {
+            code: upperCode,
             playerIndex: currentPlayerIndex,
             playerCount: room.playerCount,
+            playerId: result.playerId,
         });
 
         // Notify others
@@ -86,6 +90,43 @@ io.on('connection', (socket) => {
         // Auto-start when 5 players are in
         if (room.playerCount === 5) {
             room.startGame();
+        }
+    });
+
+    socket.on('reconnect_room', ({ code, playerId }) => {
+        if (currentRoom) {
+            socket.emit('error', { message: 'Already in a room.' });
+            return;
+        }
+
+        const upperCode = code.toUpperCase();
+        const room = rooms.get(upperCode);
+
+        if (!room) {
+            socket.emit('error', { message: 'Room not found.' });
+            return;
+        }
+
+        const playerIndex = room.findPlayerByToken(playerId);
+        if (playerIndex === -1) {
+            socket.emit('error', { message: 'Invalid player token.' });
+            return;
+        }
+
+        room.reconnectPlayer(playerIndex, socket);
+        currentRoom = room;
+        currentPlayerIndex = playerIndex;
+        socket.join(upperCode);
+
+        socket.emit('reconnected', {
+            playerIndex,
+            playerCount: room.playerCount,
+            code: upperCode,
+        });
+
+        // Send current game state if game is in progress
+        if (room.started) {
+            room.sendStateTo(playerIndex);
         }
     });
 
@@ -103,9 +144,9 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (currentRoom && currentPlayerIndex !== null) {
-            currentRoom.removePlayer(currentPlayerIndex);
+            currentRoom.disconnectPlayer(currentPlayerIndex);
 
-            // Clean up empty rooms
+            // Clean up rooms where no players have IDs (shouldn't happen, but safety)
             if (currentRoom.playerCount === 0) {
                 rooms.delete(currentRoom.code);
             }
