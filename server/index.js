@@ -7,9 +7,13 @@ const PORT = process.env.PORT || 3001;
 
 const app = express();
 const httpServer = createServer(app);
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:5173', 'http://localhost:4173'];
+
 const io = new Server(httpServer, {
     cors: {
-        origin: ['http://localhost:5173', 'http://localhost:4173'],
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
     },
 });

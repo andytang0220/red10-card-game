@@ -45,7 +45,8 @@ export function useMultiplayerEngine() {
 
     // Connect socket on mount
     useEffect(() => {
-        const socket = io({ transports: ['websocket', 'polling'] });
+        const serverUrl = import.meta.env.VITE_SERVER_URL || '';
+        const socket = io(serverUrl, { transports: ['websocket', 'polling'] });
         socketRef.current = socket;
 
         socket.on('connect', () => {
