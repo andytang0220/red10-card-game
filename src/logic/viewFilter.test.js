@@ -47,9 +47,11 @@ describe('getPlayerView', () => {
         expect(view.handCounts).toEqual([1, 2, 0, 1, 3]);
     });
 
-    it('does not include teams in output', () => {
-        const view = getPlayerView(makeState(), 0);
-        expect(view).not.toHaveProperty('teams');
+    it('includes teams in output', () => {
+        const state = makeState();
+        const view = getPlayerView(state, 0);
+        expect(view).toHaveProperty('teams');
+        expect(view.teams).toEqual(state.teams);
     });
 
     it('revealedRedTens is passed through', () => {

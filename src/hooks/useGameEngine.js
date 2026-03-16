@@ -181,10 +181,11 @@ export function gameReducer(state, action) {
                 const dbCandidate = findDrawbackCandidate(resolved.hands, value, drawbackStart, pendingPlayerIndex);
 
                 if (dbCandidate !== null) {
-                    return {
+                    return skipIneligiblePlayers({
                         ...resolved,
+                        activePlayerIndex: (pendingPlayerIndex + 1) % PLAYER_COUNT,
                         forkWindow: { value, pendingPlayerIndex: dbCandidate, stage: 'drawback' },
-                    };
+                    });
                 }
                 return skipIneligiblePlayers({
                     ...resolved,

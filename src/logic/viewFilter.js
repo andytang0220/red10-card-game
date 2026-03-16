@@ -14,6 +14,7 @@ export function getPlayerView(state, playerIndex) {
         scores: state.scores,
         finishOrder: state.finishOrder,
         roundNumber: state.roundNumber,
+        teams: state.teams,
         orderingPlayerIndex: state.orderingPlayerIndex,
         orderingReady: state.orderingReady,
         roundPoints: state.roundPoints,
