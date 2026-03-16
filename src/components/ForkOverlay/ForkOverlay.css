@@ -1,39 +1,50 @@
-.fork-prompt {
-    min-height: 100vh;
+.fork-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 100;
+}
+
+.fork-overlay__panel {
+    width: 100%;
+    max-width: 480px;
+    background: #1a3d2a;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px 32px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 20px;
-    padding: 24px;
-    background: #1a3d2a;
+    gap: 16px;
 }
 
-.fork-prompt__player {
+.fork-overlay__player {
     font-size: 2rem;
     font-weight: 700;
     color: #fff;
 }
 
-.fork-prompt__question {
+.fork-overlay__question {
     font-size: 1rem;
     color: #ccc;
     text-align: center;
     max-width: 320px;
 }
 
-.fork-prompt__context {
+.fork-overlay__context {
     font-size: 0.8rem;
     color: #888;
     text-align: center;
 }
 
-.fork-prompt__buttons {
+.fork-overlay__buttons {
     display: flex;
     gap: 12px;
 }
 
-.fork-prompt__btn {
+.fork-overlay__btn {
     padding: 12px 36px;
     font-size: 1rem;
     font-weight: 600;
@@ -43,21 +54,21 @@
     transition: opacity 0.15s;
 }
 
-.fork-prompt__btn:hover {
+.fork-overlay__btn:hover {
     opacity: 0.85;
 }
 
-.fork-prompt__btn--yes {
+.fork-overlay__btn--yes {
     background: #b8860b;
     color: #fff;
 }
 
-.fork-prompt__btn--no {
+.fork-overlay__btn--no {
     background: #555;
     color: #fff;
 }
 
-.fork-prompt__hand {
+.fork-overlay__hand {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -65,7 +76,7 @@
     width: 100%;
 }
 
-.fork-prompt__hand-label {
+.fork-overlay__hand-label {
     font-size: 0.75rem;
     color: #aaa;
     font-weight: 600;
@@ -73,7 +84,7 @@
     text-transform: uppercase;
 }
 
-.fork-prompt__hand-cards {
+.fork-overlay__hand-cards {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;

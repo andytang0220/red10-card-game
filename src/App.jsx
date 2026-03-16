@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import './App.css';
 import { isGameOver } from './logic/scoring.js';
 import { useGameEngine } from './hooks/useGameEngine.js';
@@ -8,16 +9,31 @@ import ActionBar from './components/ActionBar/ActionBar.jsx';
 import ScoreBoard from './components/ScoreBoard/ScoreBoard.jsx';
 import RoundSummary from './components/RoundSummary/RoundSummary.jsx';
 import HandOrderingPhase from './components/HandOrderingPhase/HandOrderingPhase.jsx';
-import ForkWindowPhase from './components/ForkWindowPhase/ForkWindowPhase.jsx';
+import ForkOverlay from './components/ForkOverlay/ForkOverlay.jsx';
 
 function App() {
     const engine = useGameEngine();
     const {
         phase, activePlayerIndex, currentTrick,
         hands, scores, revealedRedTens, teams, finishOrder, forkWindow,
-        selectedCards, validationMessage, forkReady,
+        selectedCards, validationMessage,
         orderingPlayerIndex, orderingReady, roundPoints, gameState,
     } = engine;
+
+    const [dismissedForkKey, setDismissedForkKey] = useState(null);
+
+    const forkKey = forkWindow
+        ? `${forkWindow.pendingPlayerIndex}-${forkWindow.stage}-${forkWindow.value}`
+        : null;
+    const showForkOverlay = forkWindow !== null && forkKey !== dismissedForkKey;
+
+    useEffect(() => {
+        if (forkWindow === null) setDismissedForkKey(null);
+    }, [forkWindow]);
+
+    function handleForkDismiss() {
+        setDismissedForkKey(forkKey);
+    }
 
     if (phase === 'setup') {
         return (
@@ -44,24 +60,21 @@ function App() {
 
     if (phase === 'pass_screen') {
         return (
-            <PassScreen
-                playerIndex={activePlayerIndex}
-                onReady={engine.enterPlaying}
-            />
-        );
-    }
-
-    if (phase === 'fork_window') {
-        return (
-            <ForkWindowPhase
-                forkReady={forkReady}
-                forkWindow={forkWindow}
-                hands={hands}
-                currentTrick={currentTrick}
-                onReady={engine.setForkReady}
-                onAccept={engine.handleForkAccept}
-                onDecline={engine.handleForkDecline}
-            />
+            <>
+                <PassScreen
+                    playerIndex={activePlayerIndex}
+                    onReady={engine.enterPlaying}
+                />
+                {showForkOverlay && (
+                    <ForkOverlay
+                        forkWindow={forkWindow}
+                        hands={hands}
+                        currentTrick={currentTrick}
+                        onAccept={engine.handleForkAccept}
+                        onDismiss={handleForkDismiss}
+                    />
+                )}
+            </>
         );
     }
 
@@ -112,6 +125,15 @@ function App() {
                 onFork={() => {}}
                 validationMessage={validationMessage}
             />
+            {showForkOverlay && (
+                <ForkOverlay
+                    forkWindow={forkWindow}
+                    hands={hands}
+                    currentTrick={currentTrick}
+                    onAccept={engine.handleForkAccept}
+                    onDismiss={handleForkDismiss}
+                />
+            )}
         </div>
     );
 }
