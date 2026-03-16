@@ -2,12 +2,16 @@ import Card from '../Card/Card.jsx';
 import { canFork, canDrawback } from '../../logic/forks.js';
 import './ForkOverlay.css';
 
-export default function ForkOverlay({ forkWindow, hands, currentTrick, onAccept, onDismiss }) {
+export default function ForkOverlay({ forkWindow, hands, hand: handProp, currentTrick, onAccept, onDismiss }) {
     if (!forkWindow) return null;
 
-    const { stage, value, pendingPlayerIndex } = forkWindow;
+    const { stage, value, pendingPlayerIndex, isYours } = forkWindow;
+
+    // In multiplayer, non-pending players get isYours === false — nothing to show
+    if (isYours === false) return null;
+
     const isFork = stage === 'fork';
-    const hand = hands[pendingPlayerIndex];
+    const hand = handProp || (hands && hands[pendingPlayerIndex]);
     const forkCards = isFork ? canFork(hand, currentTrick) : null;
     const drawbackCard = !isFork ? canDrawback(hand, value) : null;
     const highlightedIds = new Set(

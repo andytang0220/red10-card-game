@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import { isGameOver } from './logic/scoring.js';
 import { useGameEngine } from './hooks/useGameEngine.js';
+import { useMultiplayerEngine } from './hooks/useMultiplayerEngine.js';
 import PassScreen from './components/PassScreen/PassScreen.jsx';
 import PlayerHand from './components/PlayerHand/PlayerHand.jsx';
 import TrickArea from './components/TrickArea/TrickArea.jsx';
@@ -10,15 +11,36 @@ import ScoreBoard from './components/ScoreBoard/ScoreBoard.jsx';
 import RoundSummary from './components/RoundSummary/RoundSummary.jsx';
 import HandOrderingPhase from './components/HandOrderingPhase/HandOrderingPhase.jsx';
 import ForkOverlay from './components/ForkOverlay/ForkOverlay.jsx';
+import Lobby from './components/Lobby/Lobby.jsx';
 
-function App() {
+function LocalGame() {
     const engine = useGameEngine();
+    return <GameUI engine={engine} isMultiplayer={false} />;
+}
+
+function OnlineGame() {
+    const engine = useMultiplayerEngine();
+
+    if (!engine.inGame) {
+        return <Lobby engine={engine} />;
+    }
+
+    return <GameUI engine={engine} isMultiplayer={true} />;
+}
+
+function GameUI({ engine, isMultiplayer }) {
     const {
         phase, activePlayerIndex, currentTrick,
-        hands, scores, revealedRedTens, teams, finishOrder, forkWindow,
+        scores, revealedRedTens, teams, finishOrder, forkWindow,
         selectedCards, validationMessage,
         orderingPlayerIndex, orderingReady, roundPoints, gameState,
     } = engine;
+
+    // In multiplayer, we use engine.hand (own hand only)
+    // In local, we use engine.hands (all hands)
+    const hands = engine.hands;
+    const hand = isMultiplayer ? engine.hand : (hands ? hands[activePlayerIndex] : []);
+    const orderingHand = isMultiplayer ? engine.hand : (hands ? hands[orderingPlayerIndex] : []);
 
     const [dismissedForkKey, setDismissedForkKey] = useState(null);
 
@@ -35,6 +57,16 @@ function App() {
         setDismissedForkKey(forkKey);
     }
 
+    // Multiplayer: show waiting screen during hand_ordering if already submitted
+    if (isMultiplayer && engine.waitingForOrdering) {
+        return (
+            <div className="app app--centered">
+                <h1 className="app__title">Red10</h1>
+                <p>Waiting for other players to order their hands...</p>
+            </div>
+        );
+    }
+
     if (phase === 'setup') {
         return (
             <div className="app app--centered">
@@ -49,9 +81,9 @@ function App() {
     if (phase === 'hand_ordering') {
         return (
             <HandOrderingPhase
-                orderingReady={orderingReady}
-                orderingPlayerIndex={orderingPlayerIndex}
-                hand={hands[orderingPlayerIndex]}
+                orderingReady={isMultiplayer ? true : orderingReady}
+                orderingPlayerIndex={isMultiplayer ? engine.playerIndex : orderingPlayerIndex}
+                hand={orderingHand}
                 onReady={engine.setOrderingReady}
                 onDone={engine.handleOrderingDone}
             />
@@ -59,6 +91,15 @@ function App() {
     }
 
     if (phase === 'pass_screen') {
+        // In multiplayer, pass_screen is auto-skipped on server.
+        // If we somehow receive it, just show a brief loading state.
+        if (isMultiplayer) {
+            return (
+                <div className="app app--centered">
+                    <p>Loading...</p>
+                </div>
+            );
+        }
         return (
             <>
                 <PassScreen
@@ -79,7 +120,9 @@ function App() {
     }
 
     if (phase === 'round_over') {
-        const loser = hands.findIndex((h, i) => h.length > 0 && !finishOrder.includes(i));
+        const loser = isMultiplayer
+            ? (engine.handCounts || []).findIndex((count, i) => count > 0 && !finishOrder.includes(i))
+            : hands.findIndex((h, i) => h.length > 0 && !finishOrder.includes(i));
         return (
             <RoundSummary
                 finishOrder={finishOrder}
@@ -108,27 +151,38 @@ function App() {
     }
 
     // 'playing'
+    const isMyTurn = isMultiplayer ? (engine.playerIndex === activePlayerIndex) : true;
+
     return (
         <div className="app">
             <ScoreBoard scores={scores} revealedRedTens={revealedRedTens} teams={teams} finishOrder={finishOrder} />
+            {isMultiplayer && (
+                <p className="app__turn-info">
+                    You are Player {engine.playerIndex + 1}
+                    {isMyTurn ? ' — Your turn!' : ` — Player ${activePlayerIndex + 1}'s turn`}
+                </p>
+            )}
             <TrickArea currentTrick={currentTrick} />
             <PlayerHand
-                hand={hands[activePlayerIndex]}
-                selectedCards={selectedCards}
-                onCardClick={engine.handleCardClick}
-                playerIndex={activePlayerIndex}
+                hand={hand}
+                selectedCards={isMyTurn ? selectedCards : []}
+                onCardClick={isMyTurn ? engine.handleCardClick : () => {}}
+                playerIndex={isMultiplayer ? engine.playerIndex : activePlayerIndex}
             />
-            <ActionBar
-                onPlay={engine.handlePlay}
-                onPass={engine.handlePass}
-                canFork={false}
-                onFork={() => {}}
-                validationMessage={validationMessage}
-            />
+            {isMyTurn && (
+                <ActionBar
+                    onPlay={engine.handlePlay}
+                    onPass={engine.handlePass}
+                    canFork={false}
+                    onFork={() => {}}
+                    validationMessage={validationMessage}
+                />
+            )}
             {showForkOverlay && (
                 <ForkOverlay
                     forkWindow={forkWindow}
                     hands={hands}
+                    hand={isMultiplayer ? engine.hand : undefined}
                     currentTrick={currentTrick}
                     onAccept={engine.handleForkAccept}
                     onDismiss={handleForkDismiss}
@@ -136,6 +190,30 @@ function App() {
             )}
         </div>
     );
+}
+
+function App() {
+    const [mode, setMode] = useState(null);
+
+    if (mode === null) {
+        return (
+            <div className="app app--centered">
+                <h1 className="app__title">Red10</h1>
+                <button className="app__start-btn" onClick={() => setMode('local')}>
+                    Local Play
+                </button>
+                <button className="app__start-btn" onClick={() => setMode('online')}>
+                    Online Play
+                </button>
+            </div>
+        );
+    }
+
+    if (mode === 'local') {
+        return <LocalGame />;
+    }
+
+    return <OnlineGame />;
 }
 
 export default App;
