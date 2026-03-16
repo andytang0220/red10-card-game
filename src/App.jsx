@@ -123,6 +123,15 @@ function GameUI({ engine, isMultiplayer }) {
         const loser = isMultiplayer
             ? (engine.handCounts || []).findIndex((count, i) => count > 0 && !finishOrder.includes(i))
             : hands.findIndex((h, i) => h.length > 0 && !finishOrder.includes(i));
+
+        const onNextRound = isMultiplayer
+            ? engine.readyNextRound
+            : () => engine.startRound(scores, gameState.roundNumber + 1);
+
+        const nextRoundLabel = isMultiplayer
+            ? (engine.waitingForNextRound ? `Waiting for others... (${engine.readyCount}/5)` : 'Ready for Next Round')
+            : 'Next Round';
+
         return (
             <RoundSummary
                 finishOrder={finishOrder}
@@ -130,7 +139,9 @@ function GameUI({ engine, isMultiplayer }) {
                 roundPoints={roundPoints}
                 teams={teams}
                 scores={scores}
-                onNextRound={() => engine.startRound(scores, gameState.roundNumber + 1)}
+                onNextRound={onNextRound}
+                nextRoundLabel={nextRoundLabel}
+                nextRoundDisabled={isMultiplayer && engine.waitingForNextRound}
             />
         );
     }

@@ -26,6 +26,7 @@ export class GameRoom {
         this.state = { ...initialState };
         this.started = false;
         this.orderedHands = new Array(PLAYER_COUNT).fill(null);
+        this.readyForNextRound = new Array(PLAYER_COUNT).fill(false);
     }
 
     get playerCount() {
@@ -80,6 +81,16 @@ export class GameRoom {
             return this.handleOrderingDone(playerIndex, action.orderedHand);
         }
 
+        // Collect ready signals for next round
+        if (action.type === 'READY_NEXT_ROUND') {
+            return this.handleReadyNextRound(playerIndex);
+        }
+
+        // Block client-sent START_ROUND — server handles this via ready-up
+        if (action.type === 'START_ROUND') {
+            return { error: 'Use READY_NEXT_ROUND instead.' };
+        }
+
         const prevState = this.state;
         const newState = gameReducer(this.state, fullAction);
 
@@ -121,6 +132,48 @@ export class GameRoom {
             }
             this.orderedHands = new Array(PLAYER_COUNT).fill(null);
             this.autoAdvance();
+            this.broadcastState();
+        }
+
+        return { ok: true };
+    }
+
+    handleReadyNextRound(playerIndex) {
+        if (this.state.phase !== 'round_over') {
+            return { error: 'Not in round_over phase.' };
+        }
+        if (this.readyForNextRound[playerIndex]) {
+            return { error: 'Already marked ready.' };
+        }
+
+        this.readyForNextRound[playerIndex] = true;
+
+        // Notify the player they're waiting
+        const socket = this.sockets[playerIndex];
+        if (socket) {
+            socket.emit('waiting_for_others');
+        }
+
+        // Broadcast updated ready count to all players
+        const readyCount = this.readyForNextRound.filter(Boolean).length;
+        for (let i = 0; i < PLAYER_COUNT; i++) {
+            const s = this.sockets[i];
+            if (s) {
+                s.emit('ready_count', { readyCount });
+            }
+        }
+
+        // Start next round when all are ready
+        if (readyCount === PLAYER_COUNT) {
+            this.readyForNextRound = new Array(PLAYER_COUNT).fill(false);
+            const { hands, starterIndex } = dealCards();
+            this.state = gameReducer(this.state, {
+                type: 'START_ROUND',
+                hands,
+                starterIndex,
+                existingScores: this.state.scores,
+                roundNumber: this.state.roundNumber + 1,
+            });
             this.broadcastState();
         }
 

@@ -33,6 +33,8 @@ export function useMultiplayerEngine() {
     const [inGame, setInGame] = useState(false);
     const [lobbyError, setLobbyError] = useState(null);
     const [waitingForOrdering, setWaitingForOrdering] = useState(false);
+    const [waitingForNextRound, setWaitingForNextRound] = useState(false);
+    const [readyCount, setReadyCount] = useState(0);
 
     // Game state from server
     const [serverState, setServerState] = useState(null);
@@ -92,6 +94,8 @@ export function useMultiplayerEngine() {
             setServerState(view);
             setInGame(true);
             setWaitingForOrdering(false);
+            setWaitingForNextRound(false);
+            setReadyCount(0);
             // Clear selected cards when state updates
             setSelectedCards([]);
             setValidationMessage(null);
@@ -99,6 +103,10 @@ export function useMultiplayerEngine() {
 
         socket.on('waiting_for_others', () => {
             setWaitingForOrdering(true);
+        });
+
+        socket.on('ready_count', ({ readyCount: rc }) => {
+            setReadyCount(rc);
         });
 
         socket.on('error', ({ message }) => {
@@ -174,9 +182,15 @@ export function useMultiplayerEngine() {
         emit('action', { type: 'SET_ORDERING_READY' });
     }, [emit]);
 
-    const startRound = useCallback((existingScores, roundNumber) => {
-        emit('action', { type: 'START_ROUND', existingScores, roundNumber });
+    const readyNextRound = useCallback(() => {
+        setWaitingForNextRound(true);
+        emit('action', { type: 'READY_NEXT_ROUND' });
     }, [emit]);
+
+    const startRound = useCallback(() => {
+        // In multiplayer, startRound is handled via readyNextRound
+        // This is a no-op to keep the interface consistent
+    }, []);
 
     const enterPlaying = useCallback(() => {
         // pass_screen is auto-skipped on server, this is a no-op
@@ -223,6 +237,9 @@ export function useMultiplayerEngine() {
         inGame,
         lobbyError,
         waitingForOrdering,
+        waitingForNextRound,
+        readyCount,
+        readyNextRound,
         createRoom,
         joinRoom,
     };
