@@ -1,6 +1,6 @@
 import './RoundSummary.css';
 
-export default function RoundSummary({ finishOrder, loser, roundPoints, teams, scores, onNextRound }) {
+export default function RoundSummary({ finishOrder, loser, roundPoints, teams, scores, onNextRound, nextRoundLabel, nextRoundDisabled }) {
     const allPlaces = [...finishOrder, loser];
 
     return (
@@ -60,8 +60,8 @@ export default function RoundSummary({ finishOrder, loser, roundPoints, teams, s
                 ))}
             </div>
 
-            <button className="round-summary__btn" onClick={onNextRound}>
-                Next Round
+            <button className="round-summary__btn" onClick={onNextRound} disabled={nextRoundDisabled}>
+                {nextRoundLabel || 'Next Round'}
             </button>
         </div>
     );
