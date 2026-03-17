@@ -10,9 +10,10 @@ const PLAYER_COUNT = 5;
 export function dealCards() {
     const deck = shuffle(createDeck());
     const hands = [[], [], [], [], []];
+    const offset = Math.floor(Math.random() * PLAYER_COUNT);
 
     for (let i = 0; i < deck.length; i++) {
-        hands[i % PLAYER_COUNT].push(deck[i]);
+        hands[(i + offset) % PLAYER_COUNT].push(deck[i]);
     }
 
     const starterIndex = hands.findIndex(hand => hand.some(c => c.rank === '4' && c.suit === '♥'));

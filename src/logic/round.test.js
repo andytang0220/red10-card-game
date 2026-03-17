@@ -32,13 +32,10 @@ describe('dealCards', () => {
         expect(total).toBe(54);
     });
 
-    it('first 4 players get 11 cards, last player gets 10', () => {
+    it('exactly one player gets 10 cards and the rest get 11', () => {
         const { hands } = dealCards();
-        expect(hands[0]).toHaveLength(11);
-        expect(hands[1]).toHaveLength(11);
-        expect(hands[2]).toHaveLength(11);
-        expect(hands[3]).toHaveLength(11);
-        expect(hands[4]).toHaveLength(10);
+        const lengths = hands.map(h => h.length).sort();
+        expect(lengths).toEqual([10, 11, 11, 11, 11]);
     });
 
     it('starterIndex is the player holding 4♥', () => {
