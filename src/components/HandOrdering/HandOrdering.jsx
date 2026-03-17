@@ -1,33 +1,48 @@
 import { useState } from 'react';
+import { sortHand } from '../../logic/cards.js';
 import Card from '../Card/Card.jsx';
 import './HandOrdering.css';
 
 export default function HandOrdering({ hand, playerIndex, onDone }) {
-    const [slots, setSlots] = useState(Array(hand.length).fill(null));
-    const [selectedCard, setSelectedCard] = useState(null);
+    const [orderedHand, setOrderedHand] = useState(() => sortHand(hand));
+    const [dragIndex, setDragIndex] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
 
-    const unplacedCards = hand.filter(card => !slots.some(s => s?.id === card.id));
-    const allFilled = slots.every(s => s !== null);
-
-    function handleCardClick(card) {
-        setSelectedCard(prev => prev?.id === card.id ? null : card);
+    function handleDragStart(e, index) {
+        setDragIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
     }
 
-    function handleSlotClick(slotIndex) {
-        const slotCard = slots[slotIndex];
+    function handleDragOver(e, index) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverIndex(index);
+    }
 
-        if (slotCard !== null && selectedCard !== null) {
-            // Swap: place selected card here, displaced card returns to unplaced row
-            setSlots(prev => prev.map((s, i) => i === slotIndex ? selectedCard : s));
-            setSelectedCard(null);
-        } else if (slotCard === null && selectedCard !== null) {
-            // Place selected card into empty slot
-            setSlots(prev => prev.map((s, i) => i === slotIndex ? selectedCard : s));
-            setSelectedCard(null);
-        } else if (slotCard !== null && selectedCard === null) {
-            // Return card from slot back to unplaced row
-            setSlots(prev => prev.map((s, i) => i === slotIndex ? null : s));
+    function handleDragLeave() {
+        setDragOverIndex(null);
+    }
+
+    function handleDrop(e, dropIndex) {
+        e.preventDefault();
+        if (dragIndex === null || dragIndex === dropIndex) {
+            setDragIndex(null);
+            setDragOverIndex(null);
+            return;
         }
+        setOrderedHand(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(dragIndex, 1);
+            next.splice(dropIndex, 0, moved);
+            return next;
+        });
+        setDragIndex(null);
+        setDragOverIndex(null);
+    }
+
+    function handleDragEnd() {
+        setDragIndex(null);
+        setDragOverIndex(null);
     }
 
     return (
@@ -35,50 +50,32 @@ export default function HandOrdering({ hand, playerIndex, onDone }) {
             <div className="hand-ordering__player">Player {playerIndex + 1}</div>
             <div className="hand-ordering__title">Arrange your hand</div>
 
-            <div className="hand-ordering__section">
-                <div className="hand-ordering__row-label">Dealt cards</div>
-                <div className="hand-ordering__row hand-ordering__row--dealt">
-                    {unplacedCards.map(card => (
-                        <Card
-                            key={card.id}
-                            card={card}
-                            selected={selectedCard?.id === card.id}
-                            onClick={() => handleCardClick(card)}
-                        />
-                    ))}
-                    {unplacedCards.length === 0 && (
-                        <span className="hand-ordering__all-placed">All cards placed ✓</span>
-                    )}
-                </div>
-            </div>
-
-            <div className="hand-ordering__section">
-                <div className="hand-ordering__row-label">Your order</div>
-                <div className="hand-ordering__row">
-                    {slots.map((card, i) =>
-                        card !== null ? (
-                            <Card
-                                key={card.id}
-                                card={card}
-                                onClick={() => handleSlotClick(i)}
-                            />
-                        ) : (
-                            <div
-                                key={i}
-                                className={`hand-ordering__slot${selectedCard ? ' hand-ordering__slot--ready' : ''}`}
-                                onClick={() => handleSlotClick(i)}
-                            />
-                        )
-                    )}
-                </div>
+            <div className="hand-ordering__row">
+                {orderedHand.map((card, i) => (
+                    <div
+                        key={card.id}
+                        className={
+                            'hand-ordering__card-wrapper' +
+                            (dragIndex === i ? ' hand-ordering__card-wrapper--dragging' : '') +
+                            (dragOverIndex === i ? ' hand-ordering__card-wrapper--drag-over' : '')
+                        }
+                        draggable
+                        onDragStart={e => handleDragStart(e, i)}
+                        onDragOver={e => handleDragOver(e, i)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={e => handleDrop(e, i)}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <Card card={card} />
+                    </div>
+                ))}
             </div>
 
             <button
                 className="hand-ordering__btn"
-                disabled={!allFilled}
-                onClick={() => onDone(slots)}
+                onClick={() => onDone(orderedHand)}
             >
-                Done ordering hand
+                Confirm hand
             </button>
         </div>
     );
