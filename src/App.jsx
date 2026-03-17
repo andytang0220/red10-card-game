@@ -11,6 +11,7 @@ import ScoreBoard from './components/ScoreBoard/ScoreBoard.jsx';
 import RoundSummary from './components/RoundSummary/RoundSummary.jsx';
 import HandOrderingPhase from './components/HandOrderingPhase/HandOrderingPhase.jsx';
 import ForkOverlay from './components/ForkOverlay/ForkOverlay.jsx';
+import RulesOverlay from './components/RulesOverlay/RulesOverlay.jsx';
 import Lobby from './components/Lobby/Lobby.jsx';
 
 function LocalGame() {
@@ -42,6 +43,7 @@ function GameUI({ engine, isMultiplayer }) {
     const hand = isMultiplayer ? engine.hand : (hands ? hands[activePlayerIndex] : []);
     const orderingHand = isMultiplayer ? engine.hand : (hands ? hands[orderingPlayerIndex] : []);
 
+    const [showRules, setShowRules] = useState(false);
     const [dismissedForkKey, setDismissedForkKey] = useState(null);
 
     const forkKey = forkWindow
@@ -57,12 +59,22 @@ function GameUI({ engine, isMultiplayer }) {
         setDismissedForkKey(forkKey);
     }
 
+    function renderRulesButton() {
+        return (
+            <>
+                <button className="app__rules-btn" onClick={() => setShowRules(true)}>Rules</button>
+                {showRules && <RulesOverlay onClose={() => setShowRules(false)} />}
+            </>
+        );
+    }
+
     // Multiplayer: show waiting screen during hand_ordering if already submitted
     if (isMultiplayer && engine.waitingForOrdering) {
         return (
             <div className="app app--centered">
                 <h1 className="app__title">Red10</h1>
                 <p>Waiting for other players to order their hands...</p>
+                {renderRulesButton()}
             </div>
         );
     }
@@ -74,19 +86,23 @@ function GameUI({ engine, isMultiplayer }) {
                 <button className="app__start-btn" onClick={() => engine.startRound([0, 0, 0, 0, 0], 1)}>
                     Start Game
                 </button>
+                {renderRulesButton()}
             </div>
         );
     }
 
     if (phase === 'hand_ordering') {
         return (
-            <HandOrderingPhase
-                orderingReady={isMultiplayer ? true : orderingReady}
-                orderingPlayerIndex={isMultiplayer ? engine.playerIndex : orderingPlayerIndex}
-                hand={orderingHand}
-                onReady={engine.setOrderingReady}
-                onDone={engine.handleOrderingDone}
-            />
+            <>
+                <HandOrderingPhase
+                    orderingReady={isMultiplayer ? true : orderingReady}
+                    orderingPlayerIndex={isMultiplayer ? engine.playerIndex : orderingPlayerIndex}
+                    hand={orderingHand}
+                    onReady={engine.setOrderingReady}
+                    onDone={engine.handleOrderingDone}
+                />
+                {renderRulesButton()}
+            </>
         );
     }
 
@@ -97,6 +113,7 @@ function GameUI({ engine, isMultiplayer }) {
             return (
                 <div className="app app--centered">
                     <p>Loading...</p>
+                    {renderRulesButton()}
                 </div>
             );
         }
@@ -115,6 +132,7 @@ function GameUI({ engine, isMultiplayer }) {
                         onDismiss={handleForkDismiss}
                     />
                 )}
+                {renderRulesButton()}
             </>
         );
     }
@@ -133,16 +151,19 @@ function GameUI({ engine, isMultiplayer }) {
             : 'Next Round';
 
         return (
-            <RoundSummary
-                finishOrder={finishOrder}
-                loser={loser}
-                roundPoints={roundPoints}
-                teams={teams}
-                scores={scores}
-                onNextRound={onNextRound}
-                nextRoundLabel={nextRoundLabel}
-                nextRoundDisabled={isMultiplayer && engine.waitingForNextRound}
-            />
+            <>
+                <RoundSummary
+                    finishOrder={finishOrder}
+                    loser={loser}
+                    roundPoints={roundPoints}
+                    teams={teams}
+                    scores={scores}
+                    onNextRound={onNextRound}
+                    nextRoundLabel={nextRoundLabel}
+                    nextRoundDisabled={isMultiplayer && engine.waitingForNextRound}
+                />
+                {renderRulesButton()}
+            </>
         );
     }
 
@@ -157,6 +178,7 @@ function GameUI({ engine, isMultiplayer }) {
                 <button className="app__start-btn" onClick={engine.handleNewGame}>
                     Play Again
                 </button>
+                {renderRulesButton()}
             </div>
         );
     }
@@ -199,6 +221,7 @@ function GameUI({ engine, isMultiplayer }) {
                     onDismiss={handleForkDismiss}
                 />
             )}
+            {renderRulesButton()}
         </div>
     );
 }

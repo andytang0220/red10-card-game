@@ -45,3 +45,24 @@ body {
     margin: 0 0 24px;
     text-align: center;
 }
+
+.app__rules-btn {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ccc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    cursor: pointer;
+    z-index: 50;
+    transition: background 0.15s;
+}
+
+.app__rules-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
