@@ -247,6 +247,89 @@ describe('FORK_ACCEPT (fork stage)', () => {
     });
 });
 
+describe('FORK_ACCEPT (self-drawback)', () => {
+    it('forker becomes drawback candidate when they hold the last card of the forked rank', () => {
+        // Player 1 has three 7s (a bomb), another player played a single 7
+        // Player 1 forks with two 7s, still holds the third
+        const state = makeState({
+            phase: 'pass_screen',
+            hands: [
+                [c('9','♠')],                                    // player 0
+                [c('7','♥'), c('7','♠'), c('7','♦'), c('K','♣')], // player 1: 3 sevens + king
+                [c('J','♣')],                                    // player 2
+                [c('8','♥')],                                    // player 3
+                [c('6','♣')],                                    // player 4
+            ],
+            activePlayerIndex: 1,
+            currentTrick: { type: TRICK_TYPES.SINGLE, value: 7, length: 1, playedBy: 0, cards: [c('7','♣')] },
+            forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'fork' },
+        });
+        const result = gameReducer(state, { type: 'FORK_ACCEPT' });
+        // Fork applied — now drawback candidate should be player 1 (self)
+        expect(result.forkWindow).not.toBeNull();
+        expect(result.forkWindow.stage).toBe('drawback');
+        expect(result.forkWindow.pendingPlayerIndex).toBe(1);
+    });
+
+    it('self-drawback clears trick and gives forker the lead', () => {
+        // State after fork was accepted — player 1 is the drawback candidate for their own fork
+        const state = makeState({
+            phase: 'pass_screen',
+            hands: [
+                [c('9','♠')],
+                [c('7','♦'), c('K','♣')],   // player 1: holds last 7 + king
+                [c('J','♣')],
+                [c('8','♥')],
+                [c('6','♣')],
+            ],
+            activePlayerIndex: 2,
+            currentTrick: { type: TRICK_TYPES.PAIR, value: 7, length: 2, playedBy: 1, cards: [c('7','♥'), c('7','♠')] },
+            forkWindow: { value: 7, pendingPlayerIndex: 1, stage: 'drawback' },
+        });
+        const result = gameReducer(state, { type: 'FORK_ACCEPT' });
+        // Drawback applied — trick cleared, player 1 leads next
+        expect(result.forkWindow).toBeNull();
+        expect(result.currentTrick).toBeNull();
+        expect(result.trickStarter).toBe(1);
+        expect(result.activePlayerIndex).toBe(1);
+        // The 7♦ should be removed from player 1's hand
+        expect(result.hands[1]).toHaveLength(1);
+        expect(result.hands[1][0].rank).toBe('K');
+    });
+
+    it('full self-drawback flow: fork then drawback by same player', () => {
+        // Player 2 has three 8s, player 0 played a single 8
+        const state = makeState({
+            phase: 'pass_screen',
+            hands: [
+                [c('9','♠')],
+                [c('J','♣')],
+                [c('8','♥'), c('8','♠'), c('8','♦'), c('K','♣')], // player 2: 3 eights
+                [c('6','♥')],
+                [c('5','♣')],
+            ],
+            activePlayerIndex: 2,
+            currentTrick: { type: TRICK_TYPES.SINGLE, value: 8, length: 1, playedBy: 0, cards: [c('8','♣')] },
+            forkWindow: { value: 8, pendingPlayerIndex: 2, stage: 'fork' },
+        });
+
+        // Step 1: Accept fork
+        const afterFork = gameReducer(state, { type: 'FORK_ACCEPT' });
+        expect(afterFork.forkWindow.stage).toBe('drawback');
+        expect(afterFork.forkWindow.pendingPlayerIndex).toBe(2);
+
+        // Step 2: Accept self-drawback
+        const afterDrawback = gameReducer(afterFork, { type: 'FORK_ACCEPT' });
+        expect(afterDrawback.forkWindow).toBeNull();
+        expect(afterDrawback.currentTrick).toBeNull();
+        expect(afterDrawback.trickStarter).toBe(2);
+        expect(afterDrawback.activePlayerIndex).toBe(2);
+        // All three 8s played (2 fork + 1 drawback), only K remains
+        expect(afterDrawback.hands[2]).toHaveLength(1);
+        expect(afterDrawback.hands[2][0].rank).toBe('K');
+    });
+});
+
 describe('FORK_ACCEPT guards', () => {
     it('is ignored when no fork window exists', () => {
         const state = makeState({ phase: 'playing', forkWindow: null });

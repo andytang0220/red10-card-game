@@ -177,8 +177,12 @@ export function gameReducer(state, action) {
                     return finalizeRound({ ...resolved, forkWindow: null });
                 }
 
+                // Check forker first — they may hold the last card (3-of-a-kind self-drawback)
+                const selfDrawback = canDrawback(resolved.hands[pendingPlayerIndex], value);
                 const drawbackStart = (pendingPlayerIndex + 1) % PLAYER_COUNT;
-                const dbCandidate = findDrawbackCandidate(resolved.hands, value, drawbackStart, pendingPlayerIndex);
+                const dbCandidate = selfDrawback
+                    ? pendingPlayerIndex
+                    : findDrawbackCandidate(resolved.hands, value, drawbackStart, pendingPlayerIndex);
 
                 if (dbCandidate !== null) {
                     return skipIneligiblePlayers({
