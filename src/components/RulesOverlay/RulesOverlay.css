@@ -1,0 +1,72 @@
+.rules-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 200;
+}
+
+.rules-overlay__panel {
+    width: 90%;
+    max-width: 520px;
+    max-height: 85vh;
+    background: #1a3d2a;
+    border-radius: 12px;
+    padding: 24px 20px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.rules-overlay__close {
+    align-self: flex-end;
+    padding: 6px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.rules-overlay__close:hover {
+    opacity: 0.85;
+}
+
+.rules-overlay__heading {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    text-align: center;
+}
+
+.rules-overlay__content {
+    color: #ccc;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.rules-overlay__content h3 {
+    color: #f0c040;
+    font-size: 1rem;
+    margin: 16px 0 6px;
+}
+
+.rules-overlay__content p {
+    margin: 0 0 8px;
+}
+
+.rules-overlay__content ul {
+    margin: 0 0 8px;
+    padding-left: 20px;
+}
+
+.rules-overlay__content li {
+    margin-bottom: 4px;
+}
