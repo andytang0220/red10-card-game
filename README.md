@@ -1,10 +1,23 @@
 # Red10 Card Game
 
-A single-device, 5-player web implementation of the Red10 card game built with React + Vite.
+A 5-player web implementation of the Red10 card game built with React + Vite, playable locally on a single device or online with friends.
 
 ## Overview
 
 Red10 is a trick-based card game for 5 players. Each round, players are secretly divided into two teams based on who holds a red 10 (10♥ or 10♦) in their hand. The goal is to empty your hand before the other players. Points are bad — the first player to reach 10 points loses.
+
+## Play Modes
+
+### Local Play
+All 5 players share a single device, taking turns in a hot-seat style. No server or internet connection required — all game logic runs in the browser.
+
+### Online Play
+Play with friends over the internet using real-time networking powered by Socket.io.
+
+- **Room system** — Create a room and share a 4-character code with friends, or join an existing room by entering its code.
+- **Automatic start** — The game begins as soon as 5 players have joined.
+- **Session persistence** — If you disconnect, you can rejoin the same room and pick up where you left off.
+- **Private hands** — Each player only sees their own cards; the server filters game state per player before sending updates.
 
 ## How to Play
 
@@ -61,6 +74,14 @@ npm install
 npm run dev
 ```
 
+For online play, also start the game server:
+
+```bash
+npm run server
+```
+
+The server runs on port 3001 by default. In development, Vite proxies WebSocket connections to the server automatically.
+
 ## Running Tests
 
 ```bash
@@ -69,5 +90,6 @@ npm test
 
 ## Tech Stack
 - **React** + **Vite**
+- **Express** + **Socket.io** for online multiplayer
 - **Vitest** for unit tests
 - Plain CSS (one file per component)
